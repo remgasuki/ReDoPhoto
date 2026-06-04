@@ -1,9 +1,6 @@
 # Dependencies
 node_modules/
 
-# IDE / Tooling
-.qoder/
-
 # Build output
 out/
 dist/

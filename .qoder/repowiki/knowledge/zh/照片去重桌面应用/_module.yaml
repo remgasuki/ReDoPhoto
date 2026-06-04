@@ -1,0 +1,36 @@
+schema_version: 1
+module_path: ""
+title: 照片去重桌面应用
+scope:
+    - electron.vite.config.ts
+    - package.json
+    - postcss.config.js
+    - tailwind.config.js
+    - tsconfig.json
+    - tsconfig.node.json
+    - tsconfig.web.json
+    - src\main\index.ts
+    - src\main\ipc\index.ts
+    - src\main\services\dedup.service.ts
+    - src\main\services\hash.service.ts
+    - src\main\services\scanner.service.ts
+    - src\main\services\settings.service.ts
+    - src\preload\index.d.ts
+    - src\preload\index.ts
+    - src\renderer\index.html
+    - src\renderer\src\App.tsx
+    - src\renderer\src\components\CompareStep.tsx
+    - src\renderer\src\components\ExecuteStep.tsx
+    - src\renderer\src\components\ImportStep.tsx
+    - src\renderer\src\components\ScanningStep.tsx
+    - src\renderer\src\components\SettingsPanel.tsx
+    - src\renderer\src\components\TitleBar.tsx
+    - src\renderer\src\main.tsx
+    - src\renderer\src\stores\dedupStore.ts
+    - src\renderer\src\stores\scanStore.ts
+    - src\renderer\src\stores\settingsStore.ts
+    - src\renderer\src\styles\globals.css
+    - src\renderer\src\types\index.ts
+source_files: []
+depends_on: []
+related_to: []
