@@ -1,0 +1,160 @@
+import { useState, useEffect } from 'react'
+import { useScanStore } from '../stores/scanStore'
+import { useDedupStore } from '../stores/dedupStore'
+import { useSettingsStore } from '../stores/settingsStore'
+import type { DedupProgress } from '../types'
+
+export default function ExecuteStep() {
+  const { phase, setPhase, files, folderPath, duplicateGroups, dedupResult, setDedupResult } = useScanStore()
+  const { getDecisionsArray } = useDedupStore()
+  const settings = useSettingsStore((s) => s.settings)
+  const [progress, setProgress] = useState<DedupProgress | null>(null)
+  const [outputName, setOutputName] = useState('')
+  const [executing, setExecuting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!outputName && folderPath) {
+      const folderName = folderPath.split(/[\\/]/).pop() || 'output'
+      setOutputName(folderName + settings.outputFolderSuffix)
+    }
+  }, [folderPath, settings.outputFolderSuffix, outputName])
+
+  useEffect(() => {
+    if (phase === 'executing' && !executing && !dedupResult) {
+      runDedup()
+    }
+  }, [phase])
+
+  const runDedup = async () => {
+    setExecuting(true)
+    setError(null)
+
+    const cleanup = window.api.onDedupProgress((p) => setProgress(p))
+
+    try {
+      const decisions = getDecisionsArray()
+      const result = await window.api.executeDedup({
+        decisions,
+        settings: {
+          outputMode: settings.outputMode,
+          outputFolderName: outputName
+        },
+        sourceFolder: folderPath!,
+        files
+      })
+      setDedupResult(result)
+      setPhase('done')
+    } catch (err) {
+      setError('执行失败: ' + String(err))
+      setPhase('comparing')
+    } finally {
+      cleanup()
+      setExecuting(false)
+    }
+  }
+
+  if (phase === 'executing') {
+    return (
+      <div className="h-full flex items-center justify-center p-8 animate-fade-in">
+        <div className="max-w-md w-full text-center">
+          <div className="bg-slate-800 rounded-xl p-8">
+            <div className="text-5xl mb-4">⚙️</div>
+            <h2 className="text-xl font-semibold text-slate-200 mb-2">正在执行去重...</h2>
+
+            {progress && (
+              <>
+                <p className="text-sm text-slate-400 mb-2">{progress.currentFile}</p>
+                <p className="text-sm text-slate-500 mb-4">
+                  {progress.current} / {progress.total}
+                </p>
+                <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full transition-all duration-300"
+                    style={{ width: `${progress.percentage}%` }}
+                  />
+                </div>
+                <p className="text-sm text-slate-500 mt-2">{progress.percentage}%</p>
+              </>
+            )}
+
+            {!progress && (
+              <div className="flex items-center justify-center gap-2 text-slate-400">
+                <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <span>准备执行...</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Done state
+  return (
+    <div className="h-full flex items-center justify-center p-8 animate-fade-in">
+      <div className="max-w-lg w-full text-center">
+        <div className="bg-slate-800 rounded-xl p-8">
+          {error ? (
+            <>
+              <div className="text-5xl mb-4">❌</div>
+              <h2 className="text-xl font-semibold text-red-400 mb-2">执行出错</h2>
+              <p className="text-sm text-red-300 mb-6">{error}</p>
+            </>
+          ) : (
+            <>
+              <div className="text-5xl mb-4">✅</div>
+              <h2 className="text-xl font-semibold text-green-400 mb-2">去重完成！</h2>
+
+              {dedupResult && (
+                <div className="space-y-2 text-sm text-slate-400 mb-6">
+                  <p>
+                    成功处理: <span className="text-green-400 font-bold">{dedupResult.success}</span> 个文件
+                  </p>
+                  {dedupResult.errors.length > 0 && (
+                    <p>
+                      跳过: <span className="text-amber-400 font-bold">{dedupResult.errors.length}</span> 个文件
+                    </p>
+                  )}
+                  {settings.outputMode === 'copy' && (
+                    <p className="text-slate-500 mt-2">
+                      输出文件夹: {folderPath?.split(/[\\/]/).slice(0, -1).join('\\')}\\{outputName}
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Output folder name setting (only in copy mode and before execution) */}
+          {settings.outputMode === 'copy' && !dedupResult && !error && (
+            <div className="mb-4">
+              <label className="block text-sm text-slate-400 mb-1 text-left">输出文件夹名称</label>
+              <input
+                type="text"
+                value={outputName}
+                onChange={(e) => setOutputName(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          )}
+
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => {
+                useScanStore.getState().reset()
+                useDedupStore.getState().clearAll()
+              }}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-colors"
+            >
+              处理新的文件夹
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
