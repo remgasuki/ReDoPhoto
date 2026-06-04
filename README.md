@@ -91,7 +91,24 @@ src/
         └── types/           # 共享类型
 ```
 
-## 使用说明
+## 快速上手
+
+1. 前往 [Releases](https://github.com/remgasuki/ReDoPhoto/releases) 页面下载最新版 `ReDoPhoto x.x.x.exe`
+2. 双击运行，无需安装
+3. 使用流程：
+
+```
+选择照片文件夹 → 等待扫描完成 → 逐组对比并选择保留项 → 执行去重
+```
+
+> Copy 模式下，保留的文件会复制到新文件夹（原名 + 后缀），原文件夹不变。
+> Delete 模式下，未选中的文件会被直接删除，请谨慎操作。
+
+---
+
+## 开发者指南
+
+以下说明面向希望从源码构建的开发者。
 
 ### 环境要求
 
@@ -124,7 +141,7 @@ npm run build
 npm run build:win
 ```
 
-产物位于 `dist/ReDoPhoto x.x.x.exe`，双击即可运行，无需安装。
+产物位于 `dist/ReDoPhoto x.x.x.exe`，双击即可运行。
 
 ## 许可证
 
