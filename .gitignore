@@ -32,3 +32,6 @@ desktop.ini
 
 # Electron cache
 electron-download/
+
+# Icon source
+icon-source.*
