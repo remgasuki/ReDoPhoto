@@ -3,8 +3,13 @@ import { useScanStore } from '../stores/scanStore'
 import { useDedupStore } from '../stores/dedupStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import type { DedupProgress } from '../types'
+import type { ThemeClasses } from '../types/theme'
 
-export default function ExecuteStep() {
+interface ExecuteStepProps {
+  theme: ThemeClasses
+}
+
+export default function ExecuteStep({ theme }: ExecuteStepProps) {
   const { phase, setPhase, files, folderPath, duplicateGroups, dedupResult, setDedupResult } = useScanStore()
   const { getDecisionsArray } = useDedupStore()
   const settings = useSettingsStore((s) => s.settings)
@@ -16,7 +21,7 @@ export default function ExecuteStep() {
   useEffect(() => {
     if (!outputName && folderPath) {
       const folderName = folderPath.split(/[\\/]/).pop() || 'output'
-      setOutputName(folderName + settings.outputFolderSuffix)
+      setOutputName(folderName + '_' + settings.outputFolderSuffix)
     }
   }, [folderPath, settings.outputFolderSuffix, outputName])
 
@@ -26,9 +31,18 @@ export default function ExecuteStep() {
     }
   }, [phase])
 
+  const getOutputName = () => {
+    if (outputName) return outputName
+    const folderName = folderPath?.split(/[\\/]/).pop() || 'output'
+    return folderName + '_' + settings.outputFolderSuffix
+  }
+
   const runDedup = async () => {
     setExecuting(true)
     setError(null)
+
+    const actualOutputName = getOutputName()
+    if (!outputName) setOutputName(actualOutputName)
 
     const cleanup = window.api.onDedupProgress((p) => setProgress(p))
 
@@ -38,7 +52,7 @@ export default function ExecuteStep() {
         decisions,
         settings: {
           outputMode: settings.outputMode,
-          outputFolderName: outputName
+          outputFolderName: actualOutputName
         },
         sourceFolder: folderPath!,
         files
@@ -58,28 +72,28 @@ export default function ExecuteStep() {
     return (
       <div className="h-full flex items-center justify-center p-8 animate-fade-in">
         <div className="max-w-md w-full text-center">
-          <div className="bg-slate-800 rounded-xl p-8">
+          <div className={`rounded-xl p-8 transition-colors ${theme.card}`}>
             <div className="text-5xl mb-4">⚙️</div>
-            <h2 className="text-xl font-semibold text-slate-200 mb-2">正在执行去重...</h2>
+            <h2 className={`text-xl font-semibold mb-2 ${theme.text}`}>正在执行去重...</h2>
 
             {progress && (
               <>
-                <p className="text-sm text-slate-400 mb-2">{progress.currentFile}</p>
-                <p className="text-sm text-slate-500 mb-4">
+                <p className={`text-sm mb-2 ${theme.textDim}`}>{progress.currentFile}</p>
+                <p className={`text-sm mb-4 ${theme.textDim}`}>
                   {progress.current} / {progress.total}
                 </p>
-                <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
+                <div className={`w-full rounded-full h-3 overflow-hidden ${theme.border.replace('border-', 'bg-')}`}>
                   <div
                     className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full transition-all duration-300"
                     style={{ width: `${progress.percentage}%` }}
                   />
                 </div>
-                <p className="text-sm text-slate-500 mt-2">{progress.percentage}%</p>
+                <p className={`text-sm mt-2 ${theme.textDim}`}>{progress.percentage}%</p>
               </>
             )}
 
             {!progress && (
-              <div className="flex items-center justify-center gap-2 text-slate-400">
+              <div className={`flex items-center justify-center gap-2 ${theme.textDim}`}>
                 <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -97,7 +111,7 @@ export default function ExecuteStep() {
   return (
     <div className="h-full flex items-center justify-center p-8 animate-fade-in">
       <div className="max-w-lg w-full text-center">
-        <div className="bg-slate-800 rounded-xl p-8">
+        <div className={`rounded-xl p-8 transition-colors ${theme.card}`}>
           {error ? (
             <>
               <div className="text-5xl mb-4">❌</div>
@@ -110,7 +124,7 @@ export default function ExecuteStep() {
               <h2 className="text-xl font-semibold text-green-400 mb-2">去重完成！</h2>
 
               {dedupResult && (
-                <div className="space-y-2 text-sm text-slate-400 mb-6">
+                <div className={`space-y-2 text-sm mb-6 ${theme.textDim}`}>
                   <p>
                     成功处理: <span className="text-green-400 font-bold">{dedupResult.success}</span> 个文件
                   </p>
@@ -120,8 +134,13 @@ export default function ExecuteStep() {
                     </p>
                   )}
                   {settings.outputMode === 'copy' && (
-                    <p className="text-slate-500 mt-2">
-                      输出文件夹: {folderPath?.split(/[\\/]/).slice(0, -1).join('\\')}\\{outputName}
+                    <p className={`mt-2 ${theme.textDim}`}>
+                      输出文件夹: {folderPath?.split(/[\\/]/).slice(0, -1).join('\\')}\{outputName}
+                    </p>
+                  )}
+                  {settings.outputMode === 'delete' && (
+                    <p className="text-red-400/70 mt-2">
+                      已永久删除重复文件
                     </p>
                   )}
                 </div>
@@ -132,12 +151,12 @@ export default function ExecuteStep() {
           {/* Output folder name setting (only in copy mode and before execution) */}
           {settings.outputMode === 'copy' && !dedupResult && !error && (
             <div className="mb-4">
-              <label className="block text-sm text-slate-400 mb-1 text-left">输出文件夹名称</label>
+              <label className={`block text-sm mb-1 text-left ${theme.textDim}`}>输出文件夹名称</label>
               <input
                 type="text"
                 value={outputName}
                 onChange={(e) => setOutputName(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-500 transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.border} ${theme.text}`}
               />
             </div>
           )}

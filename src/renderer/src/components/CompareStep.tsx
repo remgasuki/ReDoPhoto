@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useScanStore } from '../stores/scanStore'
 import { useDedupStore } from '../stores/dedupStore'
 import type { DuplicateGroup, FileInfo } from '../types'
+import type { ThemeClasses } from '../types/theme'
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return bytes + ' B'
@@ -9,7 +10,7 @@ function formatSize(bytes: number) {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
-function ImageCard({ file, isKept, isRemoved }: { file: FileInfo; isKept: boolean; isRemoved: boolean }) {
+function ImageCard({ file, isKept, isRemoved, theme }: { file: FileInfo; isKept: boolean; isRemoved: boolean; theme: ThemeClasses }) {
   const [thumbnail, setThumbnail] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -26,12 +27,12 @@ function ImageCard({ file, isKept, isRemoved }: { file: FileInfo; isKept: boolea
   return (
     <div className={`flex-1 rounded-lg overflow-hidden border-2 transition-all
       ${isKept ? 'border-green-500 shadow-lg shadow-green-500/20' :
-        isRemoved ? 'border-red-500/50 opacity-50' : 'border-slate-700'}`}>
+        isRemoved ? 'border-red-500/50 opacity-50' : theme.border}`}>
       {/* Image */}
-      <div className="relative bg-slate-900 aspect-video flex items-center justify-center">
+      <div className={`relative aspect-video flex items-center justify-center ${theme.bg}`}>
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <svg className="w-8 h-8 animate-spin text-slate-600" viewBox="0 0 24 24" fill="none">
+            <svg className={`w-8 h-8 animate-spin ${theme.textDim}`} viewBox="0 0 24 24" fill="none">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
@@ -40,7 +41,7 @@ function ImageCard({ file, isKept, isRemoved }: { file: FileInfo; isKept: boolea
         {thumbnail ? (
           <img src={thumbnail} alt={file.name} className="max-w-full max-h-full object-contain" />
         ) : !loading ? (
-          <div className="text-slate-600 text-sm">无法加载预览</div>
+          <div className={`text-sm ${theme.textDim}`}>无法加载预览</div>
         ) : null}
 
         {/* Status badge */}
@@ -57,9 +58,9 @@ function ImageCard({ file, isKept, isRemoved }: { file: FileInfo; isKept: boolea
       </div>
 
       {/* File info */}
-      <div className="p-3 bg-slate-800">
-        <p className="text-sm text-slate-200 truncate" title={file.name}>{file.name}</p>
-        <div className="flex gap-3 mt-1 text-xs text-slate-500">
+      <div className={`p-3 ${theme.card}`}>
+        <p className={`text-sm truncate ${theme.text}`} title={file.name}>{file.name}</p>
+        <div className={`flex gap-3 mt-1 text-xs ${theme.textDim}`}>
           <span>{formatSize(file.size)}</span>
           <span>{file.ext.toUpperCase()}</span>
           <span>{new Date(file.modifiedTime).toLocaleDateString()}</span>
@@ -69,7 +70,7 @@ function ImageCard({ file, isKept, isRemoved }: { file: FileInfo; isKept: boolea
   )
 }
 
-function GroupCard({ group, index, total }: { group: DuplicateGroup; index: number; total: number }) {
+function GroupCard({ group, index, total, theme }: { group: DuplicateGroup; index: number; total: number; theme: ThemeClasses }) {
   const { decisions, keepLeft, keepRight, hasDecision } = useDedupStore()
   const decision = decisions.get(group.groupId)
 
@@ -77,11 +78,11 @@ function GroupCard({ group, index, total }: { group: DuplicateGroup; index: numb
   const isFileRemoved = (fileId: string) => decision?.deleteFileIds.includes(fileId) || false
 
   return (
-    <div className="bg-slate-800/50 rounded-xl p-4 animate-fade-in">
+    <div className={`rounded-xl p-4 animate-fade-in ${theme.card}`}>
       {/* Group header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-slate-300">
+          <span className={`text-sm font-bold ${theme.textMuted}`}>
             第 {index + 1} / {total} 组
           </span>
           <span className={`text-xs px-2 py-0.5 rounded-full
@@ -102,6 +103,7 @@ function GroupCard({ group, index, total }: { group: DuplicateGroup; index: numb
             file={file}
             isKept={isFileKept(file.id)}
             isRemoved={isFileRemoved(file.id)}
+            theme={theme}
           />
         ))}
       </div>
@@ -113,7 +115,7 @@ function GroupCard({ group, index, total }: { group: DuplicateGroup; index: numb
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all
             ${isFileKept(group.files[0]?.id)
               ? 'bg-green-600 text-white'
-              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              : `${theme.border.replace('border-', 'bg-')} ${theme.textMuted} ${theme.hoverBg}`
             }`}
         >
           ← 保留左侧
@@ -123,7 +125,7 @@ function GroupCard({ group, index, total }: { group: DuplicateGroup; index: numb
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all
             ${isFileKept(group.files[group.files.length - 1]?.id)
               ? 'bg-green-600 text-white'
-              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              : `${theme.border.replace('border-', 'bg-')} ${theme.textMuted} ${theme.hoverBg}`
             }`}
         >
           保留右侧 →
@@ -133,7 +135,11 @@ function GroupCard({ group, index, total }: { group: DuplicateGroup; index: numb
   )
 }
 
-export default function CompareStep() {
+interface CompareStepProps {
+  theme: ThemeClasses
+}
+
+export default function CompareStep({ theme }: CompareStepProps) {
   const { duplicateGroups, setPhase, folderPath } = useScanStore()
   const { keepAllLeft, keepAllRight, clearAll, getStats } = useDedupStore()
   const [currentPage, setCurrentPage] = useState(0)
@@ -157,10 +163,10 @@ export default function CompareStep() {
   return (
     <div className="h-full flex flex-col animate-fade-in">
       {/* Top bar */}
-      <div className="shrink-0 bg-slate-800 border-b border-slate-700 px-4 py-3">
+      <div className={`shrink-0 border-b px-4 py-3 transition-colors ${theme.card} ${theme.border}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <h2 className="text-lg font-semibold text-slate-200">
+            <h2 className={`text-lg font-semibold ${theme.text}`}>
               发现 {duplicateGroups.length} 组重复照片
             </h2>
             <div className="flex gap-2 text-xs">
@@ -172,19 +178,19 @@ export default function CompareStep() {
           <div className="flex gap-2">
             <button
               onClick={() => keepAllLeft(duplicateGroups)}
-              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded-lg transition-colors"
+              className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textMuted}`}
             >
               全部保留左侧
             </button>
             <button
               onClick={() => keepAllRight(duplicateGroups)}
-              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded-lg transition-colors"
+              className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textMuted}`}
             >
               全部保留右侧
             </button>
             <button
               onClick={clearAll}
-              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-400 text-sm rounded-lg transition-colors"
+              className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textDim}`}
             >
               清除选择
             </button>
@@ -200,27 +206,28 @@ export default function CompareStep() {
             group={group}
             index={currentPage * pageSize + i}
             total={duplicateGroups.length}
+            theme={theme}
           />
         ))}
       </div>
 
       {/* Bottom bar */}
-      <div className="shrink-0 bg-slate-800 border-t border-slate-700 px-4 py-3 flex items-center justify-between">
+      <div className={`shrink-0 border-t px-4 py-3 flex items-center justify-between transition-colors ${theme.card} ${theme.border}`}>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
             disabled={currentPage === 0}
-            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-sm rounded-lg transition-colors"
+            className={`px-3 py-1.5 disabled:opacity-30 disabled:cursor-not-allowed text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg}`}
           >
             ← 上一页
           </button>
-          <span className="text-sm text-slate-400">
+          <span className={`text-sm ${theme.textDim}`}>
             {currentPage + 1} / {totalPages}
           </span>
           <button
             onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
             disabled={currentPage >= totalPages - 1}
-            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-sm rounded-lg transition-colors"
+            className={`px-3 py-1.5 disabled:opacity-30 disabled:cursor-not-allowed text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg}`}
           >
             下一页 →
           </button>
@@ -229,7 +236,7 @@ export default function CompareStep() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => { useScanStore.getState().reset(); useDedupStore.getState().clearAll() }}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded-lg transition-colors"
+            className={`px-4 py-2 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textMuted}`}
           >
             重新开始
           </button>
@@ -239,7 +246,7 @@ export default function CompareStep() {
             className={`px-6 py-2 rounded-lg text-sm font-semibold transition-all
               ${stats.pending === 0
                 ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25'
-                : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                : `bg-gray-500 opacity-50 cursor-not-allowed ${theme.textDim}`
               }`}
           >
             {stats.pending > 0 ? `还有 ${stats.pending} 组未处理` : '执行去重'}
@@ -250,16 +257,16 @@ export default function CompareStep() {
       {/* Confirm dialog */}
       {showConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-slate-800 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl border border-slate-700">
-            <h3 className="text-lg font-semibold text-slate-200 mb-3">确认执行去重</h3>
-            <div className="space-y-2 text-sm text-slate-400 mb-4">
-              <p>共处理了 <span className="text-white font-bold">{stats.decided}</span> 组重复照片</p>
+          <div className={`rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl border transition-colors ${theme.card} ${theme.border}`}>
+            <h3 className={`text-lg font-semibold mb-3 ${theme.text}`}>确认执行去重</h3>
+            <div className={`space-y-2 text-sm mb-4 ${theme.textDim}`}>
+              <p>共处理了 <span className={`font-bold ${theme.text}`}>{stats.decided}</span> 组重复照片</p>
               <p>将保留用户选择的照片，移除重复项</p>
             </div>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowConfirm(false)}
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded-lg transition-colors"
+                className={`px-4 py-2 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textMuted}`}
               >
                 取消
               </button>

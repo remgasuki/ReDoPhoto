@@ -1,8 +1,13 @@
 import { useState } from 'react'
 import { useScanStore } from '../stores/scanStore'
 import { useSettingsStore } from '../stores/settingsStore'
+import type { ThemeClasses } from '../types/theme'
 
-export default function ImportStep() {
+interface ImportStepProps {
+  theme: ThemeClasses
+}
+
+export default function ImportStep({ theme }: ImportStepProps) {
   const { setPhase, setFolderPath, setFiles, setProgress, setError, folderPath, files } = useScanStore()
   const settings = useSettingsStore((s) => s.settings)
   const [dragActive, setDragActive] = useState(false)
@@ -94,12 +99,12 @@ export default function ImportStep() {
         <div className="flex items-center justify-center gap-3 mb-8">
           {['导入', '扫描', '对比', '执行'].map((step, i) => (
             <div key={step} className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold
-                ${i === 0 ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors
+                ${i === 0 ? 'bg-blue-500 text-white' : `${theme.border} ${theme.textDim}`}`}>
                 {i + 1}
               </div>
-              <span className={`text-sm ${i === 0 ? 'text-blue-400' : 'text-slate-500'}`}>{step}</span>
-              {i < 3 && <div className="w-8 h-px bg-slate-700 ml-1" />}
+              <span className={`text-sm ${i === 0 ? 'text-blue-400' : theme.textDim}`}>{step}</span>
+              {i < 3 && <div className={`w-8 h-px ml-1 ${theme.border.replace('border-', 'bg-')}`} />}
             </div>
           ))}
         </div>
@@ -107,32 +112,32 @@ export default function ImportStep() {
         {/* Folder selection */}
         <div
           className={`border-2 border-dashed rounded-xl p-10 text-center transition-all cursor-pointer
-            ${dragActive ? 'border-blue-400 bg-blue-500/10' : 'border-slate-600 hover:border-slate-500 hover:bg-slate-800/50'}`}
+            ${dragActive ? 'border-blue-400 bg-blue-500/10' : `${theme.border.replace('border-', 'border-')} ${theme.hoverBg} hover:border-blue-400`}`}
           onClick={handleSelectFolder}
           onDragEnter={() => setDragActive(true)}
           onDragLeave={() => setDragActive(false)}
           onDrop={(e) => { e.preventDefault(); setDragActive(false) }}
         >
-          <svg className="w-16 h-16 mx-auto mb-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className={`w-16 h-16 mx-auto mb-4 ${theme.textDim}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
               d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
           </svg>
-          <p className="text-lg text-slate-300 mb-2">点击选择照片文件夹</p>
-          <p className="text-sm text-slate-500">支持 JPG、PNG、GIF、BMP、WebP、TIFF 格式</p>
+          <p className={`text-lg mb-2 ${theme.textMuted}`}>点击选择照片文件夹</p>
+          <p className={`text-sm ${theme.textDim}`}>支持 JPG、PNG、GIF、BMP、WebP、TIFF 格式</p>
         </div>
 
         {/* Selected folder info */}
         {folderPath && (
-          <div className="mt-6 bg-slate-800 rounded-lg p-4 animate-fade-in">
+          <div className={`mt-6 rounded-lg p-4 animate-fade-in transition-colors ${theme.card}`}>
             <div className="flex items-center gap-2 mb-2">
               <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
               </svg>
-              <span className="text-sm text-slate-300 truncate">{folderPath}</span>
+              <span className={`text-sm truncate ${theme.textMuted}`}>{folderPath}</span>
             </div>
             {files.length > 0 && (
-              <div className="flex gap-4 text-xs text-slate-400 mt-2">
+              <div className={`flex gap-4 text-xs mt-2 ${theme.textDim}`}>
                 <span>{files.length} 张图片</span>
                 <span>总大小: {formatSize(files.reduce((sum, f) => sum + f.size, 0))}</span>
               </div>
@@ -154,14 +159,14 @@ export default function ImportStep() {
           className={`w-full mt-6 py-3 rounded-lg text-white font-semibold transition-all
             ${folderPath
               ? 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/25 animate-pulse-glow'
-              : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+              : `bg-gray-500 opacity-50 cursor-not-allowed ${theme.textDim}`
             }`}
         >
           开始扫描重复照片
         </button>
 
         {/* Hash mode indicator */}
-        <div className="mt-3 text-center text-xs text-slate-500">
+        <div className={`mt-3 text-center text-xs ${theme.textDim}`}>
           检测模式：
           {settings.hashMode === 'sha256' && '精确匹配 (SHA-256)'}
           {settings.hashMode === 'phash' && '相似检测 (pHash)'}

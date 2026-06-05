@@ -5,13 +5,15 @@ export interface AppSettings {
   phashThreshold: number
   outputMode: 'copy' | 'delete'
   outputFolderSuffix: string
+  themeColor: 'black' | 'white' | 'beige' | 'skyblue' | 'darkblue' | 'kleinblue' | 'qing'
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
   hashMode: 'sha256',
   phashThreshold: 5,
   outputMode: 'copy',
-  outputFolderSuffix: 'New'
+  outputFolderSuffix: 'New',
+  themeColor: 'black'
 }
 
 const store = new Store<{ settings: AppSettings }>({

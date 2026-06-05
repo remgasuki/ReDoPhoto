@@ -1,6 +1,6 @@
 {
   "name": "redophoto",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "照片去重桌面应用",
   "main": "./out/main/index.js",
   "scripts": {

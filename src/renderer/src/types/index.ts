@@ -40,6 +40,7 @@ export interface AppSettings {
   phashThreshold: number
   outputMode: 'copy' | 'delete'
   outputFolderSuffix: string
+  themeColor: 'black' | 'white' | 'beige' | 'skyblue' | 'darkblue' | 'kleinblue' | 'qing'
 }
 
 export interface ScanProgress {

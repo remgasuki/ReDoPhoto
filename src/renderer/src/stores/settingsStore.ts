@@ -13,7 +13,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     hashMode: 'sha256',
     phashThreshold: 5,
     outputMode: 'copy',
-    outputFolderSuffix: 'New'
+    outputFolderSuffix: 'New',
+    themeColor: 'black'
   },
   loaded: false,
 

@@ -122,8 +122,11 @@ export async function executeDedup(
   sourceFolder: string,
   onProgress?: (current: number, total: number, currentFile: string) => void
 ): Promise<{ success: number; errors: string[] }> {
+  // Build file ID -> FileInfo map for resolving IDs to paths
+  const fileMap = new Map(allFiles.map(f => [f.id, f]))
+
   if (settings.outputMode === 'delete') {
-    return executeDeleteMode(decisions, onProgress)
+    return executeDeleteMode(decisions, fileMap, onProgress)
   } else {
     return executeCopyMode(decisions, allFiles, groups, settings, sourceFolder, onProgress)
   }
@@ -131,19 +134,22 @@ export async function executeDedup(
 
 async function executeDeleteMode(
   decisions: DedupDecision[],
+  fileMap: Map<string, FileInfo>,
   onProgress?: (current: number, total: number, currentFile: string) => void
 ): Promise<{ success: number; errors: string[] }> {
   const errors: string[] = []
   let success = 0
-  const allDeletes = decisions.flatMap(d => d.deleteFileIds)
-  const fileMap = new Map(allDeletes.map((id, i) => [id, i]))
+  const allDeleteIds = decisions.flatMap(d => d.deleteFileIds)
+  const total = allDeleteIds.length
 
-  // We need file paths - get them from decisions context
-  // Since we only have IDs, we need the full file info passed differently
-  // This is handled by the IPC handler passing file paths
-  const total = allDeletes.length
-  for (let i = 0; i < allDeletes.length; i++) {
-    const filePath = allDeletes[i] // In delete mode, deleteFileIds contains paths
+  for (let i = 0; i < allDeleteIds.length; i++) {
+    const fileId = allDeleteIds[i]
+    const fileInfo = fileMap.get(fileId)
+    if (!fileInfo) {
+      errors.push(`File ID ${fileId} not found in file map`)
+      continue
+    }
+    const filePath = fileInfo.path
     if (onProgress) onProgress(i + 1, total, path.basename(filePath))
     try {
       await fs.promises.unlink(filePath)
@@ -170,7 +176,11 @@ async function executeCopyMode(
   const errors: string[] = []
   let success = 0
 
-  const outputFolder = path.join(path.dirname(sourceFolder), settings.outputFolderName)
+  // Build output folder path: parent of source + source folder name + suffix
+  const sourceFolderName = path.basename(sourceFolder)
+  const sourceParentDir = path.dirname(sourceFolder)
+  const outputFolderName = settings.outputFolderName || `${sourceFolderName}_deduped`
+  const outputFolder = path.join(sourceParentDir, outputFolderName)
 
   // Create output folder
   await fs.promises.mkdir(outputFolder, { recursive: true })
