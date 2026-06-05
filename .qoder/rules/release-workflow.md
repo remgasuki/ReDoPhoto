@@ -29,16 +29,18 @@ alwaysApply: true
 修改: package.json → "version": "新版本号"
 ```
 
-### 第 2 步：构建打包
+### 第 2 步：清理 + 构建 + 打包
 
 依次执行以下命令：
 
 ```bash
+node scripts/clean-dist.js
 npx electron-vite build
 npx electron-builder --win --config
 ```
 
-- 确认 `dist/ReDoPhoto <版本号>.exe` 文件已生成
+- 第一步清理 `dist/` 目录中所有旧版 `.exe` 文件
+- 确认 `dist/ReDoPhoto <版本号>.exe` 文件已生成且仅保留该最新版本
 - 如果构建失败，报告错误信息并停止流程
 
 ### 第 3 步：更新 README.md（如适用）
