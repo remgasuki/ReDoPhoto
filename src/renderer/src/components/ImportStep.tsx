@@ -49,7 +49,7 @@ export default function ImportStep({ theme }: ImportStepProps) {
       const hashResults = await window.api.computeHashes(scannedFiles)
 
       let phashResults: Awaited<ReturnType<typeof window.api.computePhashes>> = []
-      if (settings.hashMode === 'phash' || settings.hashMode === 'both') {
+      if (settings.dedup.hashMode === 'phash' || settings.dedup.hashMode === 'both') {
         // Only compute pHash for files not in exact duplicate groups
         const shaCounts = new Map<string, number>()
         hashResults.forEach((r) => shaCounts.set(r.sha256, (shaCounts.get(r.sha256) || 0) + 1))
@@ -67,7 +67,7 @@ export default function ImportStep({ theme }: ImportStepProps) {
       const groups = await window.api.groupDuplicates({
         hashResults,
         phashResults: phashResults.length > 0 ? phashResults : undefined,
-        phashThreshold: settings.phashThreshold
+        phashThreshold: settings.dedup.phashThreshold
       })
 
       useScanStore.getState().setDuplicateGroups(groups)
@@ -168,9 +168,9 @@ export default function ImportStep({ theme }: ImportStepProps) {
         {/* Hash mode indicator */}
         <div className={`mt-3 text-center text-xs ${theme.textDim}`}>
           检测模式：
-          {settings.hashMode === 'sha256' && '精确匹配 (SHA-256)'}
-          {settings.hashMode === 'phash' && '相似检测 (pHash)'}
-          {settings.hashMode === 'both' && '组合模式 (SHA-256 + pHash)'}
+          {settings.dedup.hashMode === 'sha256' && '精确匹配 (SHA-256)'}
+          {settings.dedup.hashMode === 'phash' && '相似检测 (pHash)'}
+          {settings.dedup.hashMode === 'both' && '组合模式 (SHA-256 + pHash)'}
         </div>
       </div>
     </div>

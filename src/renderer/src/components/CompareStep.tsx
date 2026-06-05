@@ -3,6 +3,7 @@ import { useScanStore } from '../stores/scanStore'
 import { useDedupStore } from '../stores/dedupStore'
 import type { DuplicateGroup, FileInfo } from '../types'
 import type { ThemeClasses } from '../types/theme'
+import SyncImageViewer from './SyncImageViewer'
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return bytes + ' B'
@@ -73,6 +74,7 @@ function ImageCard({ file, isKept, isRemoved, theme }: { file: FileInfo; isKept:
 function GroupCard({ group, index, total, theme }: { group: DuplicateGroup; index: number; total: number; theme: ThemeClasses }) {
   const { decisions, keepLeft, keepRight, hasDecision } = useDedupStore()
   const decision = decisions.get(group.groupId)
+  const [syncMode, setSyncMode] = useState(false)
 
   const isFileKept = (fileId: string) => decision?.keepFileIds.includes(fileId) || false
   const isFileRemoved = (fileId: string) => decision?.deleteFileIds.includes(fileId) || false
@@ -95,18 +97,38 @@ function GroupCard({ group, index, total, theme }: { group: DuplicateGroup; inde
         )}
       </div>
 
-      {/* Images side by side */}
-      <div className="flex gap-3 mb-3">
-        {group.files.map((file) => (
-          <ImageCard
-            key={file.id}
-            file={file}
-            isKept={isFileKept(file.id)}
-            isRemoved={isFileRemoved(file.id)}
-            theme={theme}
-          />
-        ))}
+      {/* Sync mode toggle */}
+      <div className="flex items-center gap-2 mb-2">
+        <button
+          onClick={() => setSyncMode(!syncMode)}
+          className={`text-xs px-2 py-1 rounded transition-colors ${
+            syncMode
+              ? 'bg-blue-500/20 text-blue-400'
+              : `${theme.border.replace('border-', 'bg-')} ${theme.textDim} ${theme.hoverBg}`
+          }`}
+        >
+          {syncMode ? '✦ 同步对比' : '普通视图'}
+        </button>
       </div>
+
+      {/* Images side by side */}
+      {syncMode ? (
+        <div className="mb-3">
+          <SyncImageViewer files={group.files} theme={theme} />
+        </div>
+      ) : (
+        <div className="flex gap-3 mb-3">
+          {group.files.map((file) => (
+            <ImageCard
+              key={file.id}
+              file={file}
+              isKept={isFileKept(file.id)}
+              isRemoved={isFileRemoved(file.id)}
+              theme={theme}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Action buttons */}
       <div className="flex gap-2 justify-center">

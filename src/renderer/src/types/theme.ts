@@ -1,4 +1,4 @@
-export type ThemeColor = 'black' | 'white' | 'beige' | 'skyblue' | 'darkblue' | 'kleinblue' | 'gray'
+export type { ThemeColor } from './index'
 
 export interface ThemeClasses {
   bg: string

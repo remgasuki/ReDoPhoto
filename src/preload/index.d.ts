@@ -5,9 +5,18 @@ export type {
   DuplicateGroup,
   DedupDecision,
   DedupSettings,
+  ThemeColor,
+  DedupConfig,
+  RenameConfig,
+  OrientationConfig,
   AppSettings,
   ScanProgress,
-  DedupProgress
+  DedupProgress,
+  ExifInfo,
+  RenamePreview,
+  RenameProgress,
+  OrientationInfo,
+  OrientationProgress
 } from './index'
 
 interface ElectronAPI {
@@ -37,11 +46,34 @@ interface ElectronAPI {
   getThumbnail: (filePath: string, maxSize?: number) => Promise<string>
 
   getSettings: () => Promise<import('./index').AppSettings>
-  setSettings: (s: Partial<import('./index').AppSettings>) => Promise<import('./index').AppSettings>
+  setSettings: (s: Partial<import('./index').AppSettings> & Record<string, any>) => Promise<import('./index').AppSettings>
+
+  // Rename
+  scanExif: (files: import('./index').FileInfo[]) => Promise<import('./index').ExifInfo[]>
+  previewRename: (data: {
+    exifInfos: import('./index').ExifInfo[]
+    settings: import('./index').RenameConfig
+    sourceFolder: string
+  }) => Promise<import('./index').RenamePreview[]>
+  executeRename: (data: {
+    previews: import('./index').RenamePreview[]
+    settings: import('./index').RenameConfig
+    sourceFolder: string
+  }) => Promise<{ success: number; errors: string[] }>
+
+  // Orientation
+  scanOrientations: (files: import('./index').FileInfo[]) => Promise<import('./index').OrientationInfo[]>
+  fixOrientations: (data: {
+    files: import('./index').OrientationInfo[]
+    settings: import('./index').OrientationConfig
+    sourceFolder: string
+  }) => Promise<{ success: number; errors: string[] }>
 
   onScanProgress: (cb: (data: import('./index').ScanProgress) => void) => () => void
   onHashProgress: (cb: (data: import('./index').ScanProgress) => void) => () => void
   onDedupProgress: (cb: (data: import('./index').DedupProgress) => void) => () => void
+  onRenameProgress: (cb: (data: import('./index').RenameProgress) => void) => () => void
+  onOrientationProgress: (cb: (data: import('./index').OrientationProgress) => void) => () => void
 }
 
 declare global {

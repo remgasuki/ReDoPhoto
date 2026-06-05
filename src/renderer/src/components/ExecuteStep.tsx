@@ -51,7 +51,7 @@ export default function ExecuteStep({ theme }: ExecuteStepProps) {
       const result = await window.api.executeDedup({
         decisions,
         settings: {
-          outputMode: settings.outputMode,
+          outputMode: settings.dedup.outputMode,
           outputFolderName: actualOutputName
         },
         sourceFolder: folderPath!,
@@ -133,12 +133,12 @@ export default function ExecuteStep({ theme }: ExecuteStepProps) {
                       跳过: <span className="text-amber-400 font-bold">{dedupResult.errors.length}</span> 个文件
                     </p>
                   )}
-                  {settings.outputMode === 'copy' && (
+                  {settings.dedup.outputMode === 'copy' && (
                     <p className={`mt-2 ${theme.textDim}`}>
                       输出文件夹: {folderPath?.split(/[\\/]/).slice(0, -1).join('\\')}\{outputName}
                     </p>
                   )}
-                  {settings.outputMode === 'delete' && (
+                  {settings.dedup.outputMode === 'delete' && (
                     <p className="text-red-400/70 mt-2">
                       已永久删除重复文件
                     </p>
@@ -149,7 +149,7 @@ export default function ExecuteStep({ theme }: ExecuteStepProps) {
           )}
 
           {/* Output folder name setting (only in copy mode and before execution) */}
-          {settings.outputMode === 'copy' && !dedupResult && !error && (
+          {settings.dedup.outputMode === 'copy' && !dedupResult && !error && (
             <div className="mb-4">
               <label className={`block text-sm mb-1 text-left ${theme.textDim}`}>输出文件夹名称</label>
               <input

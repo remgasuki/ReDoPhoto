@@ -37,12 +37,37 @@ export interface DedupSettings {
   outputFolderName: string
 }
 
-export interface AppSettings {
+// New nested settings types
+export type ThemeColor = 'black' | 'white' | 'beige' | 'skyblue' | 'darkblue' | 'kleinblue' | 'gray'
+
+export interface DedupConfig {
   hashMode: 'sha256' | 'phash' | 'both'
   phashThreshold: number
   outputMode: 'copy' | 'delete'
+}
+
+export interface RenameConfig {
+  outputMode: 'copy' | 'rename-in-place'
+  nameFormat: string
+  dateFormat: string
+  separator: string
+}
+
+export interface OrientationConfig {
+  outputMode: 'copy' | 'fix-in-place'
+}
+
+export interface AppSettings {
+  dedup: DedupConfig
+  rename: RenameConfig
+  orientation: OrientationConfig
   outputFolderSuffix: string
-  themeColor: 'black' | 'white' | 'beige' | 'skyblue' | 'darkblue' | 'kleinblue' | 'gray'
+  themeColor: ThemeColor
+}
+
+// DeepPartial for partial settings updates
+type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P]
 }
 
 export interface ScanProgress {
@@ -56,6 +81,50 @@ export interface DedupProgress {
   current: number
   total: number
   currentFile: string
+  percentage: number
+}
+
+// Rename types
+export interface ExifInfo {
+  id: string
+  dateTimeOriginal: string | null  // ISO string
+  gpsLatitude: number | null
+  gpsLongitude: number | null
+  locationName: string | null
+  originalName: string
+}
+
+export interface RenamePreview {
+  id: string
+  originalPath: string
+  originalName: string
+  newName: string
+  newPath: string
+  exifInfo: ExifInfo
+  selected: boolean
+}
+
+export interface RenameProgress {
+  phase: 'scanning' | 'geocoding' | 'executing'
+  current: number
+  total: number
+  percentage: number
+}
+
+// Orientation types
+export interface OrientationInfo {
+  id: string
+  path: string
+  name: string
+  orientation: number | null
+  needsFix: boolean
+  description: string
+}
+
+export interface OrientationProgress {
+  phase: 'scanning' | 'fixing'
+  current: number
+  total: number
   percentage: number
 }
 
@@ -97,8 +166,33 @@ const api = {
 
   // Settings
   getSettings: (): Promise<AppSettings> => ipcRenderer.invoke('settings:get'),
-  setSettings: (s: Partial<AppSettings>): Promise<AppSettings> =>
+  setSettings: (s: DeepPartial<AppSettings>): Promise<AppSettings> =>
     ipcRenderer.invoke('settings:set', s),
+
+  // Rename
+  scanExif: (files: FileInfo[]): Promise<ExifInfo[]> =>
+    ipcRenderer.invoke('rename:scanExif', { files }),
+  previewRename: (data: {
+    exifInfos: ExifInfo[]
+    settings: RenameConfig
+    sourceFolder: string
+  }): Promise<RenamePreview[]> => ipcRenderer.invoke('rename:preview', data),
+  executeRename: (data: {
+    previews: RenamePreview[]
+    settings: RenameConfig
+    sourceFolder: string
+  }): Promise<{ success: number; errors: string[] }> =>
+    ipcRenderer.invoke('rename:execute', data),
+
+  // Orientation
+  scanOrientations: (files: FileInfo[]): Promise<OrientationInfo[]> =>
+    ipcRenderer.invoke('orientation:scan', { files }),
+  fixOrientations: (data: {
+    files: OrientationInfo[]
+    settings: OrientationConfig
+    sourceFolder: string
+  }): Promise<{ success: number; errors: string[] }> =>
+    ipcRenderer.invoke('orientation:fix', data),
 
   // Progress listeners
   onScanProgress: (cb: (data: ScanProgress) => void): (() => void) => {
@@ -117,6 +211,18 @@ const api = {
     const handler = (_event: any, data: DedupProgress) => cb(data)
     ipcRenderer.on('dedup:progress', handler)
     return () => ipcRenderer.removeListener('dedup:progress', handler)
+  },
+
+  onRenameProgress: (cb: (data: RenameProgress) => void): (() => void) => {
+    const handler = (_event: any, data: RenameProgress) => cb(data)
+    ipcRenderer.on('rename:progress', handler)
+    return () => ipcRenderer.removeListener('rename:progress', handler)
+  },
+
+  onOrientationProgress: (cb: (data: OrientationProgress) => void): (() => void) => {
+    const handler = (_event: any, data: OrientationProgress) => cb(data)
+    ipcRenderer.on('orientation:progress', handler)
+    return () => ipcRenderer.removeListener('orientation:progress', handler)
   }
 }
 

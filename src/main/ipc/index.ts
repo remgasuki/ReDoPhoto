@@ -16,8 +16,23 @@ import {
   type DedupSettings
 } from '../services/dedup.service'
 import { getSettings, setSettings } from '../services/settings.service'
+import {
+  extractExifBatch,
+  reverseGeocodeBatch,
+  generateRenamePreview,
+  executeRename,
+  type ExifInfo,
+  type RenameConfig
+} from '../services/rename.service'
+import {
+  scanOrientations,
+  fixOrientations,
+  type OrientationInfo,
+  type OrientationConfig
+} from '../services/orientation.service'
 
 let cachedFiles: FileInfo[] = []
+const cachedFilesMap = new Map<string, FileInfo[]>()
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   // Window controls
@@ -152,4 +167,142 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   // Settings
   ipcMain.handle('settings:get', () => getSettings())
   ipcMain.handle('settings:set', (_event, partial) => setSettings(partial))
+
+  // === Rename feature ===
+  ipcMain.handle('rename:scanExif', async (_event, { files }: { files: FileInfo[] }) => {
+    const exifInfos = await extractExifBatch(files, (current, total) => {
+      mainWindow.webContents.send('rename:progress', {
+        phase: 'scanning',
+        current,
+        total,
+        percentage: Math.round((current / total) * 100)
+      })
+    })
+
+    // Reverse geocode GPS coordinates
+    const coordsWithIndex: Array<{ lat: number; lon: number; index: number }> = []
+    exifInfos.forEach((info, index) => {
+      if (info.gpsLatitude !== null && info.gpsLongitude !== null) {
+        coordsWithIndex.push({ lat: info.gpsLatitude, lon: info.gpsLongitude, index })
+      }
+    })
+
+    if (coordsWithIndex.length > 0) {
+      // Deduplicate by cache key
+      const uniqueCoords = new Map<string, { lat: number; lon: number }>()
+      coordsWithIndex.forEach(({ lat, lon }) => {
+        const key = `${lat.toFixed(2)}_${lon.toFixed(2)}`
+        if (!uniqueCoords.has(key)) uniqueCoords.set(key, { lat, lon })
+      })
+
+      const uniqueArray = Array.from(uniqueCoords.values())
+      const names = await reverseGeocodeBatch(uniqueArray, (current, total) => {
+        mainWindow.webContents.send('rename:progress', {
+          phase: 'geocoding',
+          current,
+          total,
+          percentage: Math.round((current / total) * 100)
+        })
+      })
+
+      // Map results back to exifInfos
+      const nameMap = new Map<string, string | null>()
+      uniqueArray.forEach((coord, i) => {
+        const key = `${coord.lat.toFixed(2)}_${coord.lon.toFixed(2)}`
+        nameMap.set(key, names[i])
+      })
+
+      coordsWithIndex.forEach(({ lat, lon, index }) => {
+        const key = `${lat.toFixed(2)}_${lon.toFixed(2)}`
+        exifInfos[index].locationName = nameMap.get(key) || null
+      })
+    }
+
+    cachedFilesMap.set('rename', files)
+    return exifInfos
+  })
+
+  ipcMain.handle(
+    'rename:preview',
+    async (
+      _event,
+      {
+        exifInfos,
+        settings,
+        sourceFolder
+      }: {
+        exifInfos: ExifInfo[]
+        settings: RenameConfig
+        sourceFolder: string
+      }
+    ) => {
+      const files = cachedFilesMap.get('rename') || cachedFiles
+      const fileMap = new Map(files.map((f) => [f.id, f]))
+      return generateRenamePreview(exifInfos, settings, sourceFolder, fileMap)
+    }
+  )
+
+  ipcMain.handle(
+    'rename:execute',
+    async (
+      _event,
+      {
+        previews,
+        settings,
+        sourceFolder
+      }: {
+        previews: any[]
+        settings: RenameConfig
+        sourceFolder: string
+      }
+    ) => {
+      return executeRename(previews, settings, sourceFolder, (current, total, currentFile) => {
+        mainWindow.webContents.send('rename:progress', {
+          phase: 'executing',
+          current,
+          total,
+          percentage: Math.round((current / total) * 100)
+        })
+      })
+    }
+  )
+
+  // === Orientation feature ===
+  ipcMain.handle('orientation:scan', async (_event, { files }: { files: FileInfo[] }) => {
+    const infos = await scanOrientations(files, (current, total) => {
+      mainWindow.webContents.send('orientation:progress', {
+        phase: 'scanning',
+        current,
+        total,
+        percentage: Math.round((current / total) * 100)
+      })
+    })
+    cachedFilesMap.set('orientation', files)
+    return infos
+  })
+
+  ipcMain.handle(
+    'orientation:fix',
+    async (
+      _event,
+      {
+        files,
+        settings,
+        sourceFolder
+      }: {
+        files: OrientationInfo[]
+        settings: OrientationConfig
+        sourceFolder: string
+      }
+    ) => {
+      return fixOrientations(files, settings, sourceFolder, (current, total, currentFile) => {
+        mainWindow.webContents.send('orientation:progress', {
+          phase: 'fixing',
+          current,
+          total,
+          percentage: Math.round((current / total) * 100)
+        })
+      })
+    }
+  )
 }
