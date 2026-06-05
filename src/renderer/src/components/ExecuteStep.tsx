@@ -156,7 +156,7 @@ export default function ExecuteStep({ theme }: ExecuteStepProps) {
                 type="text"
                 value={outputName}
                 onChange={(e) => setOutputName(e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-500 transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.border} ${theme.text}`}
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-500 transition-colors ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
               />
             </div>
           )}

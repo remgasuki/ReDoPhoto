@@ -1,4 +1,4 @@
-export type ThemeColor = 'black' | 'white' | 'beige' | 'skyblue' | 'darkblue' | 'kleinblue' | 'qing'
+export type ThemeColor = 'black' | 'white' | 'beige' | 'skyblue' | 'darkblue' | 'kleinblue' | 'gray'
 
 export interface ThemeClasses {
   bg: string
@@ -8,6 +8,9 @@ export interface ThemeClasses {
   textMuted: string
   textDim: string
   hoverBg: string
+  inputBg: string
+  inputBorder: string
+  inputText: string
 }
 
 export interface ThemeOption {
@@ -29,7 +32,10 @@ export const themes: ThemeOption[] = [
       text: 'text-slate-100',
       textMuted: 'text-slate-300',
       textDim: 'text-slate-400',
-      hoverBg: 'hover:bg-slate-700'
+      hoverBg: 'hover:bg-slate-700',
+      inputBg: 'bg-slate-700',
+      inputBorder: 'border-slate-600',
+      inputText: 'text-slate-100'
     }
   },
   {
@@ -43,7 +49,10 @@ export const themes: ThemeOption[] = [
       text: 'text-gray-900',
       textMuted: 'text-gray-700',
       textDim: 'text-gray-500',
-      hoverBg: 'hover:bg-gray-200'
+      hoverBg: 'hover:bg-gray-200',
+      inputBg: 'bg-white',
+      inputBorder: 'border-gray-300',
+      inputText: 'text-gray-900'
     }
   },
   {
@@ -57,7 +66,10 @@ export const themes: ThemeOption[] = [
       text: 'text-amber-950',
       textMuted: 'text-amber-800',
       textDim: 'text-amber-600',
-      hoverBg: 'hover:bg-amber-200'
+      hoverBg: 'hover:bg-amber-200',
+      inputBg: 'bg-white',
+      inputBorder: 'border-amber-300',
+      inputText: 'text-amber-950'
     }
   },
   {
@@ -71,7 +83,10 @@ export const themes: ThemeOption[] = [
       text: 'text-sky-950',
       textMuted: 'text-sky-800',
       textDim: 'text-sky-600',
-      hoverBg: 'hover:bg-sky-200'
+      hoverBg: 'hover:bg-sky-200',
+      inputBg: 'bg-white',
+      inputBorder: 'border-sky-300',
+      inputText: 'text-sky-950'
     }
   },
   {
@@ -85,7 +100,10 @@ export const themes: ThemeOption[] = [
       text: 'text-blue-50',
       textMuted: 'text-blue-200',
       textDim: 'text-blue-400',
-      hoverBg: 'hover:bg-blue-800'
+      hoverBg: 'hover:bg-blue-800',
+      inputBg: 'bg-blue-800',
+      inputBorder: 'border-blue-700',
+      inputText: 'text-blue-50'
     }
   },
   {
@@ -99,21 +117,27 @@ export const themes: ThemeOption[] = [
       text: 'text-indigo-50',
       textMuted: 'text-indigo-200',
       textDim: 'text-indigo-400',
-      hoverBg: 'hover:bg-indigo-800'
+      hoverBg: 'hover:bg-indigo-800',
+      inputBg: 'bg-indigo-800',
+      inputBorder: 'border-indigo-600',
+      inputText: 'text-indigo-50'
     }
   },
   {
-    key: 'qing',
-    label: '群青色',
-    swatch: '#1e40af',
+    key: 'gray',
+    label: '灰色',
+    swatch: '#6b7280',
     classes: {
-      bg: 'bg-blue-900',
-      card: 'bg-blue-800',
-      border: 'border-blue-600',
-      text: 'text-blue-50',
-      textMuted: 'text-blue-200',
-      textDim: 'text-blue-300',
-      hoverBg: 'hover:bg-blue-700'
+      bg: 'bg-gray-800',
+      card: 'bg-gray-700',
+      border: 'border-gray-600',
+      text: 'text-gray-50',
+      textMuted: 'text-gray-200',
+      textDim: 'text-gray-400',
+      hoverBg: 'hover:bg-gray-600',
+      inputBg: 'bg-gray-600',
+      inputBorder: 'border-gray-500',
+      inputText: 'text-gray-50'
     }
   }
 ]
