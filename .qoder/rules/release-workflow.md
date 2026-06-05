@@ -59,19 +59,46 @@ git push origin main
 - 如果当前分支不是 `main`，推送到当前分支
 - 如果推送失败（如远程有更新），先执行 `git pull --rebase origin <分支名>` 再重试
 
-### 第 5 步：创建 GitHub Release
+### 第 5 步：创建 GitHub Release（REST API）
 
-使用 GitHub CLI (`gh`) 创建版本发布：
+**不依赖 `gh` CLI**，直接通过 GitHub REST API 发布，流程如下：
 
-```bash
-gh release create v<版本号> "dist/ReDoPhoto <版本号>.exe" --title "ReDoPhoto <版本号>" --notes "<变更说明>"
+#### 5a. 提取 GitHub Token
+
+从 Git Credential Manager 获取已缓存的 GitHub token：
+
+```powershell
+$token = (echo "protocol=https`nhost=github.com" | git credential fill 2>$null | Select-String "password" | ForEach-Object { ($_ -split "=",2)[1] })
 ```
 
-- Release tag 格式：`v<版本号>`（如 `v1.0.3`）
-- Release title 格式：`ReDoPhoto <版本号>`（如 `ReDoPhoto 1.0.3`，不含中文）
-- Release notes 应简要描述本次变更内容（用中文书写）
-- 上传 `dist/ReDoPhoto <版本号>.exe` 作为发布资产（注：GitHub 不支持空格，资产文件名用连字符 `ReDoPhoto-<版本号>.exe`）
-- 如果 `gh` CLI 不可用，提供手动创建 Release 的链接：`https://github.com/remgasuki/ReDoPhoto/releases/new`
+#### 5b. 创建 Release
+
+```powershell
+$headers = @{Authorization="token $token"; Accept="application/vnd.github+json"; "Content-Type"="application/json"}
+$body = '{"tag_name":"v<版本号>","name":"ReDoPhoto <版本号>","body":"<变更说明>","draft":false,"prerelease":false}'
+$r = Invoke-RestMethod -Uri "https://api.github.com/repos/remgasuki/ReDoPhoto/releases" -Method Post -Headers $headers -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
+# $r.id 为 Release ID，$r.html_url 为 Release 链接
+```
+
+#### 5c. 上传 exe 资产
+
+```powershell
+curl.exe -k -s -X POST -H "Authorization: token $token" -H "Content-Type: application/octet-stream" --upload-file "dist\ReDoPhoto <版本号>.exe" "https://uploads.github.com/repos/remgasuki/ReDoPhoto/releases/$($r.id)/assets?name=ReDoPhoto-<版本号>.exe"
+```
+
+#### 命名规范
+
+- Release tag：`v<版本号>`（如 `v1.0.5`）
+- Release title：`ReDoPhoto <版本号>`（如 `ReDoPhoto 1.0.5`，不含中文）
+- Release notes：简要描述本次变更（中文书写）
+- 资产文件名：`ReDoPhoto-<版本号>.exe`（连字符，GitHub 不支持空格）
+- 本地文件名：`ReDoPhoto <版本号>.exe`（空格，electron-builder 默认）
+
+#### 注意事项
+
+- `curl.exe` 必须用 `-k` 参数跳过 SSL 验证（环境存在证书问题）
+- 上传文件名使用连字符格式，与 Release title 中的空格格式区分
+- 如果 API 调用失败，提供手动创建链接：`https://github.com/remgasuki/ReDoPhoto/releases/new`
 
 ## 错误处理
 
