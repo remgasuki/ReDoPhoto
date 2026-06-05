@@ -62,12 +62,12 @@ git push origin main
 使用 GitHub CLI (`gh`) 创建版本发布：
 
 ```bash
-gh release create v<版本号> "dist/ReDoPhoto <版本号>.exe" --title "ReDoPhoto v<版本号>" --notes "<变更说明>"
+gh release create v<版本号> "dist/ReDoPhoto <版本号>.exe" --title "ReDoPhoto <版本号>" --notes "<变更说明>"
 ```
 
 - Release tag 格式：`v<版本号>`（如 `v1.0.3`）
-- Release title 格式：`ReDoPhoto v<版本号>`
-- Release notes 应简要描述本次变更内容
+- Release title 格式：`ReDoPhoto <版本号>`（如 `ReDoPhoto 1.0.3`，不含中文）
+- Release notes 应简要描述本次变更内容（用中文书写）
 - 上传 `dist/ReDoPhoto <版本号>.exe` 作为发布资产
 - 如果 `gh` CLI 不可用，提供手动创建 Release 的链接：`https://github.com/remgasuki/ReDoPhoto/releases/new`
 
