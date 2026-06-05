@@ -70,7 +70,7 @@ gh release create v<版本号> "dist/ReDoPhoto <版本号>.exe" --title "ReDoPho
 - Release tag 格式：`v<版本号>`（如 `v1.0.3`）
 - Release title 格式：`ReDoPhoto <版本号>`（如 `ReDoPhoto 1.0.3`，不含中文）
 - Release notes 应简要描述本次变更内容（用中文书写）
-- 上传 `dist/ReDoPhoto <版本号>.exe` 作为发布资产
+- 上传 `dist/ReDoPhoto <版本号>.exe` 作为发布资产（注：GitHub 不支持空格，资产文件名用连字符 `ReDoPhoto-<版本号>.exe`）
 - 如果 `gh` CLI 不可用，提供手动创建 Release 的链接：`https://github.com/remgasuki/ReDoPhoto/releases/new`
 
 ## 错误处理
