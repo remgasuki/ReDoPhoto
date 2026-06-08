@@ -1,10 +1,12 @@
 import { create } from 'zustand'
 import type { IdPhotoSizePreset, BgColorOption, CropRect, IdPhotoProgress } from '../types/idphoto'
 
-type IdPhotoPhase = 'import' | 'preview' | 'executing' | 'done'
+export type IdPhotoMode = 'create' | 'recolor'
+type IdPhotoPhase = 'import' | 'preview' | 'recolor_preview' | 'executing' | 'done'
 
 interface IdPhotoState {
   phase: IdPhotoPhase
+  mode: IdPhotoMode
 
   // Import phase
   sourcePath: string | null
@@ -15,8 +17,11 @@ interface IdPhotoState {
   selectedBgColor: BgColorOption
   error: string | null
 
-  // Preview phase
+  // Preview phase (create mode)
   cropRect: CropRect | null
+
+  // Recolor preview
+  recoloredImageBase64: string | null
 
   // Execute phase
   outputPath: string | null
@@ -25,11 +30,13 @@ interface IdPhotoState {
 
   // Actions
   setPhase: (phase: IdPhotoPhase) => void
+  setMode: (mode: IdPhotoMode) => void
   setSourcePath: (path: string) => void
   setSourceImage: (base64: string, width: number, height: number) => void
   setSelectedPreset: (preset: IdPhotoSizePreset) => void
   setSelectedBgColor: (bg: BgColorOption) => void
   setCropRect: (rect: CropRect) => void
+  setRecoloredImageBase64: (base64: string | null) => void
   setOutputPath: (path: string) => void
   setProgress: (progress: IdPhotoProgress | null) => void
   setError: (error: string | null) => void
@@ -41,6 +48,7 @@ const DEFAULT_BG: BgColorOption = { key: 'none', label: '保持原背景', color
 
 export const useIdPhotoStore = create<IdPhotoState>((set) => ({
   phase: 'import',
+  mode: 'create',
   sourcePath: null,
   sourceImageBase64: null,
   sourceWidth: null,
@@ -49,16 +57,19 @@ export const useIdPhotoStore = create<IdPhotoState>((set) => ({
   selectedBgColor: DEFAULT_BG,
   error: null,
   cropRect: null,
+  recoloredImageBase64: null,
   outputPath: null,
   progress: null,
   result: null,
 
   setPhase: (phase) => set({ phase }),
+  setMode: (mode) => set({ mode, phase: 'import', sourcePath: null, sourceImageBase64: null, sourceWidth: null, sourceHeight: null, selectedPreset: null, selectedBgColor: DEFAULT_BG, error: null, cropRect: null, recoloredImageBase64: null, outputPath: null, progress: null, result: null }),
   setSourcePath: (path) => set({ sourcePath: path }),
   setSourceImage: (base64, width, height) => set({ sourceImageBase64: base64, sourceWidth: width, sourceHeight: height }),
   setSelectedPreset: (preset) => set({ selectedPreset: preset }),
   setSelectedBgColor: (bg) => set({ selectedBgColor: bg }),
   setCropRect: (rect) => set({ cropRect: rect }),
+  setRecoloredImageBase64: (base64) => set({ recoloredImageBase64: base64 }),
   setOutputPath: (path) => set({ outputPath: path }),
   setProgress: (progress) => set({ progress }),
   setError: (error) => set({ error }),
@@ -74,6 +85,7 @@ export const useIdPhotoStore = create<IdPhotoState>((set) => ({
       selectedBgColor: DEFAULT_BG,
       error: null,
       cropRect: null,
+      recoloredImageBase64: null,
       outputPath: null,
       progress: null,
       result: null

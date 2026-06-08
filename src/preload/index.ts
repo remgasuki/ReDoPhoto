@@ -154,6 +154,15 @@ export interface IdPhotoProcessParams {
   quality: number
 }
 
+export interface RecolorParams {
+  sourcePath: string
+  outputPath: string
+  targetBgColor: string
+  tolerance: number
+  outputFormat: 'jpg' | 'png'
+  quality: number
+}
+
 export interface IdPhotoProgress {
   phase: 'processing' | 'done'
   percentage: number
@@ -268,6 +277,12 @@ const api = {
   // ID Photo
   processIdPhoto: (params: IdPhotoProcessParams): Promise<{ success: boolean; outputPath: string; error?: string }> =>
     ipcRenderer.invoke('idphoto:process', { params }),
+
+  recolorIdPhoto: (params: RecolorParams): Promise<{ success: boolean; outputPath: string; error?: string }> =>
+    ipcRenderer.invoke('idphoto:recolor', { params }),
+
+  getRecolorPreview: (sourcePath: string, targetBgColor: string, tolerance: number): Promise<string> =>
+    ipcRenderer.invoke('idphoto:recolorPreview', { sourcePath, targetBgColor, tolerance }),
 
   onIdPhotoProgress: (cb: (data: IdPhotoProgress) => void): (() => void) => {
     const handler = (_event: any, data: IdPhotoProgress) => cb(data)

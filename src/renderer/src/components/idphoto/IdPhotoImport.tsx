@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { useIdPhotoStore } from '../../stores/idphotoStore'
+import type { IdPhotoMode } from '../../stores/idphotoStore'
 import { ID_PHOTO_SIZE_PRESETS, BG_COLOR_OPTIONS, PRESET_CATEGORY_LABELS } from '../../types/idphoto'
 import type { IdPhotoSizePreset, BgColorOption } from '../../types/idphoto'
 import type { ThemeClasses } from '../../types/theme'
@@ -7,13 +9,18 @@ interface IdPhotoImportProps {
   theme: ThemeClasses
 }
 
+// Recolor mode only allows actual colors (not "none")
+const RECOLOR_BG_OPTIONS = BG_COLOR_OPTIONS.filter((o) => o.key !== 'none')
+
 export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
   const {
-    sourcePath, sourceImageBase64, sourceWidth, sourceHeight,
+    mode, sourcePath, sourceImageBase64, sourceWidth, sourceHeight,
     selectedPreset, selectedBgColor, error,
-    setSourcePath, setSourceImage, setSelectedPreset, setSelectedBgColor,
-    setCropRect, setPhase, setError
+    setMode, setSourcePath, setSourceImage, setSelectedPreset, setSelectedBgColor,
+    setCropRect, setPhase, setError, setRecoloredImageBase64
   } = useIdPhotoStore()
+
+  const [recolorProcessing, setRecolorProcessing] = useState(false)
 
   const handleSelectImage = async () => {
     try {
@@ -21,11 +28,9 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
       if (!path) return
       setSourcePath(path)
       setError(null)
+      setRecoloredImageBase64(null)
 
-      // Get image info for original dimensions
       const info = await window.api.getImageInfo(path)
-
-      // Get thumbnail for preview (base64)
       const base64 = await window.api.getThumbnail(path, 800)
       setSourceImage(base64, info.width, info.height)
     } catch (err) {
@@ -33,22 +38,19 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
     }
   }
 
-  const handleStartPreview = () => {
+  const handleStartCreatePreview = () => {
     if (!sourcePath || !selectedPreset || !sourceWidth || !sourceHeight) return
 
-    // Calculate initial crop rect (centered, max area with target aspect ratio)
     const targetRatio = selectedPreset.widthPx / selectedPreset.heightPx
     const imgRatio = sourceWidth / sourceHeight
 
     let cropW: number, cropH: number, cropX: number, cropY: number
     if (imgRatio > targetRatio) {
-      // Image is wider than needed
       cropH = sourceHeight
       cropW = sourceHeight * targetRatio
       cropX = (sourceWidth - cropW) / 2
       cropY = 0
     } else {
-      // Image is taller than needed
       cropW = sourceWidth
       cropH = sourceWidth / targetRatio
       cropX = 0
@@ -59,12 +61,41 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
     setPhase('preview')
   }
 
+  const handleStartRecolorPreview = async () => {
+    if (!sourcePath || !selectedBgColor.colorValue) return
+    setRecolorProcessing(true)
+    setError(null)
+
+    try {
+      const preview = await window.api.getRecolorPreview(sourcePath, selectedBgColor.colorValue, 60)
+      setRecoloredImageBase64(preview)
+      setPhase('recolor_preview')
+    } catch (err) {
+      setError('预览失败: ' + String(err))
+    } finally {
+      setRecolorProcessing(false)
+    }
+  }
+
+  const handleModeSwitch = (newMode: IdPhotoMode) => {
+    setMode(newMode)
+  }
+
   const categories = ['common', 'passport', 'special'] as const
-  const canProceed = sourcePath && selectedPreset && sourceImageBase64
 
   return (
     <div className="h-full overflow-y-auto p-6 animate-fade-in">
       <div className="max-w-2xl mx-auto space-y-6">
+        {/* Mode tabs */}
+        <div className="flex gap-1 p-1 rounded-lg bg-black/10">
+          <ModeTab active={mode === 'create'} onClick={() => handleModeSwitch('create')} theme={theme}>
+            制作证件照
+          </ModeTab>
+          <ModeTab active={mode === 'recolor'} onClick={() => handleModeSwitch('recolor')} theme={theme}>
+            仅更换背景色
+          </ModeTab>
+        </div>
+
         {/* Photo selection */}
         <div>
           <h3 className={`text-sm font-semibold mb-3 ${theme.textMuted}`}>选择照片</h3>
@@ -96,15 +127,17 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                     d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <p className={`text-sm ${theme.textMuted}`}>点击选择一张照片</p>
+                <p className={`text-sm ${theme.textMuted}`}>
+                  {mode === 'create' ? '点击选择一张照片' : '点击选择已有证件照'}
+                </p>
                 <p className={`text-xs mt-1 ${theme.textDim}`}>支持 JPG、PNG、BMP、WebP 格式</p>
               </>
             )}
           </div>
         </div>
 
-        {/* Size presets */}
-        {sourceImageBase64 && (
+        {/* === Create mode: size presets === */}
+        {mode === 'create' && sourceImageBase64 && (
           <div>
             <h3 className={`text-sm font-semibold mb-3 ${theme.textMuted}`}>选择证件照尺寸</h3>
             <div className="space-y-4">
@@ -135,20 +168,30 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
         )}
 
         {/* Background color */}
-        {selectedPreset && (
+        {sourceImageBase64 && (mode === 'create' ? selectedPreset : true) && (
           <div>
-            <h3 className={`text-sm font-semibold mb-3 ${theme.textMuted}`}>背景颜色</h3>
+            <h3 className={`text-sm font-semibold mb-3 ${theme.textMuted}`}>
+              {mode === 'create' ? '背景颜色' : '选择目标背景色'}
+            </h3>
             <div className="flex gap-3 flex-wrap">
-              {BG_COLOR_OPTIONS.map((opt) => (
+              {(mode === 'create' ? BG_COLOR_OPTIONS : RECOLOR_BG_OPTIONS).map((opt) => (
                 <BgColorButton
                   key={opt.key}
                   option={opt}
                   isSelected={selectedBgColor.key === opt.key}
-                  onClick={() => setSelectedBgColor(opt)}
+                  onClick={() => {
+                    setSelectedBgColor(opt)
+                    setRecoloredImageBase64(null)
+                  }}
                   theme={theme}
                 />
               ))}
             </div>
+            {mode === 'recolor' && (
+              <p className={`text-xs mt-2 ${theme.textDim}`}>
+                系统将自动识别原照片背景色并替换为所选颜色
+              </p>
+            )}
           </div>
         )}
 
@@ -160,21 +203,58 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
         )}
 
         {/* Action button */}
-        {sourceImageBase64 && selectedPreset && (
+        {mode === 'create' && sourceImageBase64 && selectedPreset && (
           <button
-            onClick={handleStartPreview}
-            disabled={!canProceed}
-            className={`w-full py-3 rounded-lg text-white font-semibold transition-all
-              ${canProceed
-                ? 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/25'
-                : `bg-gray-500 opacity-50 cursor-not-allowed ${theme.textDim}`
-              }`}
+            onClick={handleStartCreatePreview}
+            className="w-full py-3 rounded-lg text-white font-semibold transition-all bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/25"
           >
             预览裁剪
           </button>
         )}
+
+        {mode === 'recolor' && sourceImageBase64 && selectedBgColor.key !== 'none' && (
+          <button
+            onClick={handleStartRecolorPreview}
+            disabled={recolorProcessing}
+            className={`w-full py-3 rounded-lg text-white font-semibold transition-all
+              ${recolorProcessing
+                ? 'bg-gray-500 opacity-50 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/25'
+              }`}
+          >
+            {recolorProcessing ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                正在生成预览...
+              </span>
+            ) : '预览效果'}
+          </button>
+        )}
       </div>
     </div>
+  )
+}
+
+function ModeTab({ active, onClick, theme, children }: {
+  active: boolean
+  onClick: () => void
+  theme: ThemeClasses
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all
+        ${active
+          ? 'bg-blue-600 text-white shadow-sm'
+          : `${theme.textMuted} ${theme.hoverBg}`
+        }`}
+    >
+      {children}
+    </button>
   )
 }
 

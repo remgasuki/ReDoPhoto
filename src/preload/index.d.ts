@@ -20,6 +20,7 @@ export type {
   OrientationProgress,
   CropRect,
   IdPhotoProcessParams,
+  RecolorParams,
   IdPhotoProgress
 } from './index'
 
@@ -86,6 +87,8 @@ interface ElectronAPI {
 
   // ID Photo
   processIdPhoto: (params: import('./index').IdPhotoProcessParams) => Promise<{ success: boolean; outputPath: string; error?: string }>
+  recolorIdPhoto: (params: import('./index').RecolorParams) => Promise<{ success: boolean; outputPath: string; error?: string }>
+  getRecolorPreview: (sourcePath: string, targetBgColor: string, tolerance: number) => Promise<string>
   onIdPhotoProgress: (cb: (data: import('./index').IdPhotoProgress) => void) => () => void
 }
 

@@ -33,7 +33,10 @@ import {
 import {
   processIdPhoto,
   getImageInfo,
-  type IdPhotoProcessParams
+  recolorBackground,
+  getRecolorPreview,
+  type IdPhotoProcessParams,
+  type RecolorParams
 } from '../services/idphoto.service'
 
 let cachedFiles: FileInfo[] = []
@@ -348,6 +351,22 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       return processIdPhoto(params, (phase, percentage) => {
         mainWindow.webContents.send('idphoto:progress', { phase, percentage })
       })
+    }
+  )
+
+  ipcMain.handle(
+    'idphoto:recolor',
+    async (_event, { params }: { params: RecolorParams }) => {
+      return recolorBackground(params, (phase, percentage) => {
+        mainWindow.webContents.send('idphoto:progress', { phase, percentage })
+      })
+    }
+  )
+
+  ipcMain.handle(
+    'idphoto:recolorPreview',
+    async (_event, { sourcePath, targetBgColor, tolerance }: { sourcePath: string; targetBgColor: string; tolerance: number }) => {
+      return getRecolorPreview(sourcePath, targetBgColor, tolerance)
     }
   )
 }
