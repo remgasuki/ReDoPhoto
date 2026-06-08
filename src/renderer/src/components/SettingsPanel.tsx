@@ -286,6 +286,70 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               </div>
             </div>
           )}
+
+          {activeFeature === 'idphoto' && (
+            <div className={`border-t pt-4 ${theme.border}`}>
+              <h3 className={`text-sm font-semibold mb-4 text-blue-400`}>证件照制作设置</h3>
+
+              {/* Output format */}
+              <div className="mb-4">
+                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>输出格式</label>
+                <div className="space-y-2">
+                  <label
+                    className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors
+                      ${settings.idphoto.outputFormat === 'jpg' ? 'bg-blue-500/10 border border-blue-500/30' : `border border-transparent ${theme.hoverBg}`}`}
+                  >
+                    <input
+                      type="radio"
+                      name="idphotoFormat"
+                      checked={settings.idphoto.outputFormat === 'jpg'}
+                      onChange={() => updateSettings({ idphoto: { outputFormat: 'jpg' } })}
+                      className="mt-0.5 accent-blue-500"
+                    />
+                    <div>
+                      <div className={`text-sm ${theme.text}`}>JPEG</div>
+                      <div className={`text-xs ${theme.textDim}`}>常用格式，适合打印和分享</div>
+                    </div>
+                  </label>
+                  <label
+                    className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors
+                      ${settings.idphoto.outputFormat === 'png' ? 'bg-blue-500/10 border border-blue-500/30' : `border border-transparent ${theme.hoverBg}`}`}
+                  >
+                    <input
+                      type="radio"
+                      name="idphotoFormat"
+                      checked={settings.idphoto.outputFormat === 'png'}
+                      onChange={() => updateSettings({ idphoto: { outputFormat: 'png' } })}
+                      className="mt-0.5 accent-blue-500"
+                    />
+                    <div>
+                      <div className={`text-sm ${theme.text}`}>PNG</div>
+                      <div className={`text-xs ${theme.textDim}`}>无损格式，文件较大</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Quality */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>
+                  输出质量: <span className="text-blue-400">{settings.idphoto.quality}</span>
+                </label>
+                <input
+                  type="range"
+                  min={50}
+                  max={100}
+                  value={settings.idphoto.quality}
+                  onChange={(e) => updateSettings({ idphoto: { quality: Number(e.target.value) } })}
+                  className="w-full accent-blue-500"
+                />
+                <div className={`flex justify-between text-xs mt-1 ${theme.textDim}`}>
+                  <span>较小文件 (50)</span>
+                  <span>最高质量 (100)</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

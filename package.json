@@ -1,7 +1,7 @@
 {
   "name": "redophoto",
-  "version": "2.0.1",
-  "description": "照片管理桌面工具 —— 去重、智能重命名、方向修复",
+  "version": "2.1.0",
+  "description": "照片管理桌面工具 —— 去重、智能重命名、方向修复、证件照制作",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",

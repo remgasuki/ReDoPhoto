@@ -23,6 +23,10 @@ const defaultSettings: AppSettings = {
   orientation: {
     outputMode: 'copy'
   },
+  idphoto: {
+    outputFormat: 'jpg' as const,
+    quality: 95
+  },
   outputFolderSuffix: 'New',
   themeColor: 'black'
 }

@@ -55,10 +55,16 @@ export interface OrientationConfig {
   outputMode: 'copy' | 'fix-in-place'
 }
 
+export interface IdPhotoConfig {
+  outputFormat: 'jpg' | 'png'
+  quality: number
+}
+
 export interface AppSettings {
   dedup: DedupConfig
   rename: RenameConfig
   orientation: OrientationConfig
+  idphoto: IdPhotoConfig
   outputFolderSuffix: string
   themeColor: ThemeColor
 }

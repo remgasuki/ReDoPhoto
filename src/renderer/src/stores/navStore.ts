@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type Feature = 'dedup' | 'rename' | 'orientation'
+export type Feature = 'dedup' | 'rename' | 'orientation' | 'idphoto'
 
 interface NavState {
   activeFeature: Feature

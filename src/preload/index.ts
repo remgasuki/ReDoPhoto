@@ -57,10 +57,16 @@ export interface OrientationConfig {
   outputMode: 'copy' | 'fix-in-place'
 }
 
+export interface IdPhotoConfig {
+  outputFormat: 'jpg' | 'png'
+  quality: number
+}
+
 export interface AppSettings {
   dedup: DedupConfig
   rename: RenameConfig
   orientation: OrientationConfig
+  idphoto: IdPhotoConfig
   outputFolderSuffix: string
   themeColor: ThemeColor
 }
@@ -125,6 +131,31 @@ export interface OrientationProgress {
   phase: 'scanning' | 'fixing'
   current: number
   total: number
+  percentage: number
+}
+
+// ID Photo types
+export interface CropRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface IdPhotoProcessParams {
+  sourcePath: string
+  outputPath: string
+  cropRect: CropRect
+  targetWidthPx: number
+  targetHeightPx: number
+  dpi: number
+  bgColor: string | null
+  outputFormat: 'jpg' | 'png'
+  quality: number
+}
+
+export interface IdPhotoProgress {
+  phase: 'processing' | 'done'
   percentage: number
 }
 
@@ -223,6 +254,25 @@ const api = {
     const handler = (_event: any, data: OrientationProgress) => cb(data)
     ipcRenderer.on('orientation:progress', handler)
     return () => ipcRenderer.removeListener('orientation:progress', handler)
+  },
+
+  // File operations
+  selectImage: (): Promise<string | null> => ipcRenderer.invoke('file:selectImage'),
+
+  getImageInfo: (filePath: string): Promise<{ width: number; height: number; format: string }> =>
+    ipcRenderer.invoke('file:imageInfo', { filePath }),
+
+  showSaveDialog: (defaultName: string): Promise<string | null> =>
+    ipcRenderer.invoke('file:saveDialog', { defaultName }),
+
+  // ID Photo
+  processIdPhoto: (params: IdPhotoProcessParams): Promise<{ success: boolean; outputPath: string; error?: string }> =>
+    ipcRenderer.invoke('idphoto:process', { params }),
+
+  onIdPhotoProgress: (cb: (data: IdPhotoProgress) => void): (() => void) => {
+    const handler = (_event: any, data: IdPhotoProgress) => cb(data)
+    ipcRenderer.on('idphoto:progress', handler)
+    return () => ipcRenderer.removeListener('idphoto:progress', handler)
   }
 }
 

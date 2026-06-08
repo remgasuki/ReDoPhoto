@@ -30,6 +30,11 @@ import {
   type OrientationInfo,
   type OrientationConfig
 } from '../services/orientation.service'
+import {
+  processIdPhoto,
+  getImageInfo,
+  type IdPhotoProcessParams
+} from '../services/idphoto.service'
 
 let cachedFiles: FileInfo[] = []
 const cachedFilesMap = new Map<string, FileInfo[]>()
@@ -302,6 +307,46 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           total,
           percentage: Math.round((current / total) * 100)
         })
+      })
+    }
+  )
+
+  // === File operations ===
+  ipcMain.handle('file:selectImage', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      title: '选择照片文件',
+      filters: [
+        { name: '图片文件', extensions: ['jpg', 'jpeg', 'png', 'bmp', 'webp', 'tiff'] }
+      ]
+    })
+    if (result.canceled) return null
+    return result.filePaths[0]
+  })
+
+  ipcMain.handle('file:imageInfo', async (_event, { filePath }: { filePath: string }) => {
+    return getImageInfo(filePath)
+  })
+
+  ipcMain.handle('file:saveDialog', async (_event, { defaultName }: { defaultName: string }) => {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: '保存证件照',
+      defaultPath: defaultName,
+      filters: [
+        { name: 'JPEG', extensions: ['jpg', 'jpeg'] },
+        { name: 'PNG', extensions: ['png'] }
+      ]
+    })
+    if (result.canceled) return null
+    return result.filePath
+  })
+
+  // === ID Photo feature ===
+  ipcMain.handle(
+    'idphoto:process',
+    async (_event, { params }: { params: IdPhotoProcessParams }) => {
+      return processIdPhoto(params, (phase, percentage) => {
+        mainWindow.webContents.send('idphoto:progress', { phase, percentage })
       })
     }
   )

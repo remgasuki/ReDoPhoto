@@ -9,6 +9,7 @@ export type {
   DedupConfig,
   RenameConfig,
   OrientationConfig,
+  IdPhotoConfig,
   AppSettings,
   ScanProgress,
   DedupProgress,
@@ -16,7 +17,10 @@ export type {
   RenamePreview,
   RenameProgress,
   OrientationInfo,
-  OrientationProgress
+  OrientationProgress,
+  CropRect,
+  IdPhotoProcessParams,
+  IdPhotoProgress
 } from './index'
 
 interface ElectronAPI {
@@ -74,6 +78,15 @@ interface ElectronAPI {
   onDedupProgress: (cb: (data: import('./index').DedupProgress) => void) => () => void
   onRenameProgress: (cb: (data: import('./index').RenameProgress) => void) => () => void
   onOrientationProgress: (cb: (data: import('./index').OrientationProgress) => void) => () => void
+
+  // File operations
+  selectImage: () => Promise<string | null>
+  getImageInfo: (filePath: string) => Promise<{ width: number; height: number; format: string }>
+  showSaveDialog: (defaultName: string) => Promise<string | null>
+
+  // ID Photo
+  processIdPhoto: (params: import('./index').IdPhotoProcessParams) => Promise<{ success: boolean; outputPath: string; error?: string }>
+  onIdPhotoProgress: (cb: (data: import('./index').IdPhotoProgress) => void) => () => void
 }
 
 declare global {

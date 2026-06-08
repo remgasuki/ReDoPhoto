@@ -8,6 +8,7 @@ import SettingsPanel from './components/SettingsPanel'
 import DedupFeature from './components/dedup/DedupFeature'
 import RenameFeature from './components/rename/RenameFeature'
 import OrientationFeature from './components/orientation/OrientationFeature'
+import IdPhotoFeature from './components/idphoto/IdPhotoFeature'
 
 export default function App() {
   const loadSettings = useSettingsStore((s) => s.loadSettings)
@@ -32,6 +33,7 @@ export default function App() {
           {activeFeature === 'dedup' && <DedupFeature theme={theme} />}
           {activeFeature === 'rename' && <RenameFeature theme={theme} />}
           {activeFeature === 'orientation' && <OrientationFeature theme={theme} />}
+          {activeFeature === 'idphoto' && <IdPhotoFeature theme={theme} />}
         </main>
       </div>
 

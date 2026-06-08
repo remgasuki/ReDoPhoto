@@ -19,10 +19,16 @@ export interface OrientationConfig {
   outputMode: 'copy' | 'fix-in-place'
 }
 
+export interface IdPhotoConfig {
+  outputFormat: 'jpg' | 'png'
+  quality: number
+}
+
 export interface AppSettings {
   dedup: DedupConfig
   rename: RenameConfig
   orientation: OrientationConfig
+  idphoto: IdPhotoConfig
   outputFolderSuffix: string
   themeColor: ThemeColor
 }
@@ -41,6 +47,10 @@ const DEFAULT_SETTINGS: AppSettings = {
   },
   orientation: {
     outputMode: 'copy'
+  },
+  idphoto: {
+    outputFormat: 'jpg',
+    quality: 95
   },
   outputFolderSuffix: 'New',
   themeColor: 'black'
@@ -75,6 +85,7 @@ function migrateSettings(old: OldAppSettings): AppSettings {
     },
     rename: { ...DEFAULT_SETTINGS.rename },
     orientation: { ...DEFAULT_SETTINGS.orientation },
+    idphoto: { ...DEFAULT_SETTINGS.idphoto },
     outputFolderSuffix: old.outputFolderSuffix || 'New',
     themeColor: old.themeColor || 'black'
   }
