@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { ThemeClasses } from '../../types/theme'
 
 interface ColorPickerProps {
@@ -8,15 +9,16 @@ interface ColorPickerProps {
 }
 
 const QUICK_COLORS = [
-  { label: '深蓝', color: '#003078' },
-  { label: '浅蓝', color: '#438EDB' },
-  { label: '红色', color: '#FF0000' },
-  { label: '白色', color: '#FFFFFF' },
-  { label: '灰色', color: '#CCCCCC' },
-  { label: '浅灰', color: '#F0F0F0' },
+  { key: 'darkBlue', color: '#003078' },
+  { key: 'lightBlue', color: '#438EDB' },
+  { key: 'red', color: '#FF0000' },
+  { key: 'white', color: '#FFFFFF' },
+  { key: 'gray', color: '#CCCCCC' },
+  { key: 'lightGray', color: '#F0F0F0' },
 ]
 
 export default function ColorPicker({ value, onChange, theme }: ColorPickerProps) {
+  const { t } = useTranslation()
   const [inputValue, setInputValue] = useState(value || '#438EDB')
 
   const isValidHex = /^#[0-9A-Fa-f]{6}$/.test(inputValue)
@@ -64,7 +66,7 @@ export default function ColorPicker({ value, onChange, theme }: ColorPickerProps
               className="w-6 h-6 rounded-full border border-white/20"
               style={{ backgroundColor: c.color }}
             />
-            <span className={`text-[9px] ${theme.textDim}`}>{c.label}</span>
+            <span className={`text-[9px] ${theme.textDim}`}>{t(`idphoto.colorPicker.${c.key}`)}</span>
           </button>
         ))}
       </div>

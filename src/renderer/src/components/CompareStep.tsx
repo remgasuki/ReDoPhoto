@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useScanStore } from '../stores/scanStore'
 import { useDedupStore } from '../stores/dedupStore'
 import type { DuplicateGroup, FileInfo } from '../types'
@@ -12,6 +13,7 @@ function formatSize(bytes: number) {
 }
 
 function ImageCard({ file, isKept, isRemoved, theme }: { file: FileInfo; isKept: boolean; isRemoved: boolean; theme: ThemeClasses }) {
+  const { t } = useTranslation()
   const [thumbnail, setThumbnail] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -42,18 +44,18 @@ function ImageCard({ file, isKept, isRemoved, theme }: { file: FileInfo; isKept:
         {thumbnail ? (
           <img src={thumbnail} alt={file.name} className="max-w-full max-h-full object-contain" />
         ) : !loading ? (
-          <div className={`text-sm ${theme.textDim}`}>无法加载预览</div>
+          <div className={`text-sm ${theme.textDim}`}>{t('compare.loadError')}</div>
         ) : null}
 
         {/* Status badge */}
         {isKept && (
           <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-bold">
-            ✓ 保留
+            {t('compare.keep')}
           </div>
         )}
         {isRemoved && (
           <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full font-bold">
-            ✕ 移除
+            {t('compare.remove')}
           </div>
         )}
       </div>
@@ -72,12 +74,58 @@ function ImageCard({ file, isKept, isRemoved, theme }: { file: FileInfo; isKept:
 }
 
 function GroupCard({ group, index, total, theme }: { group: DuplicateGroup; index: number; total: number; theme: ThemeClasses }) {
-  const { decisions, keepLeft, keepRight, hasDecision } = useDedupStore()
+  const { t } = useTranslation()
+  const { decisions, setDecision, keepLeft, keepRight, hasDecision } = useDedupStore()
   const decision = decisions.get(group.groupId)
   const [syncMode, setSyncMode] = useState(false)
+  const [localFiles, setLocalFiles] = useState(group.files)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+
+  // Sync localFiles when group changes
+  useEffect(() => {
+    setLocalFiles(group.files)
+  }, [group.groupId])
 
   const isFileKept = (fileId: string) => decision?.keepFileIds.includes(fileId) || false
   const isFileRemoved = (fileId: string) => decision?.deleteFileIds.includes(fileId) || false
+
+  const handleDragStart = (idx: number) => {
+    setDragIndex(idx)
+  }
+
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault()
+    setDragOverIndex(idx)
+  }
+
+  const handleDrop = (dropIdx: number) => {
+    if (dragIndex === null || dragIndex === dropIdx) {
+      setDragIndex(null)
+      setDragOverIndex(null)
+      return
+    }
+    const newFiles = [...localFiles]
+    const [moved] = newFiles.splice(dragIndex, 1)
+    newFiles.splice(dropIdx, 0, moved)
+    setLocalFiles(newFiles)
+    setDragIndex(null)
+    setDragOverIndex(null)
+
+    // Auto-update decision if exists: first file is kept, rest deleted
+    if (decision) {
+      const keepId = newFiles[0]?.id
+      const deleteIds = newFiles.slice(1).map(f => f.id)
+      if (keepId) {
+        setDecision(group.groupId, [keepId], deleteIds)
+      }
+    }
+  }
+
+  const handleDragEnd = () => {
+    setDragIndex(null)
+    setDragOverIndex(null)
+  }
 
   return (
     <div className={`rounded-xl p-4 animate-fade-in ${theme.card}`}>
@@ -85,15 +133,20 @@ function GroupCard({ group, index, total, theme }: { group: DuplicateGroup; inde
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className={`text-sm font-bold ${theme.textMuted}`}>
-            第 {index + 1} / {total} 组
+            {t('compare.groupLabel', { current: index + 1, total })}
           </span>
           <span className={`text-xs px-2 py-0.5 rounded-full
             ${group.matchType === 'exact' ? 'bg-amber-500/20 text-amber-400' : 'bg-purple-500/20 text-purple-400'}`}>
-            {group.matchType === 'exact' ? '完全相同' : '高度相似'}
+            {group.matchType === 'exact' ? t('compare.matchExact') : t('compare.matchSimilar')}
           </span>
+          {localFiles.length > 2 && (
+            <span className={`text-[10px] ${theme.textDim}`} title={t('compare.priorityHint')}>
+              {t('compare.dragToReorder')}
+            </span>
+          )}
         </div>
         {hasDecision(group.groupId) && (
-          <span className="text-xs text-green-400">✓ 已决策</span>
+          <span className="text-xs text-green-400">✓ {t('compare.decidedBadge')}</span>
         )}
       </div>
 
@@ -107,7 +160,7 @@ function GroupCard({ group, index, total, theme }: { group: DuplicateGroup; inde
               : `${theme.border.replace('border-', 'bg-')} ${theme.textDim} ${theme.hoverBg}`
           }`}
         >
-          {syncMode ? '✦ 同步对比' : '普通视图'}
+          {syncMode ? t('compare.syncMode') : t('compare.normalView')}
         </button>
       </div>
 
@@ -118,14 +171,26 @@ function GroupCard({ group, index, total, theme }: { group: DuplicateGroup; inde
         </div>
       ) : (
         <div className="flex gap-3 mb-3">
-          {group.files.map((file) => (
-            <ImageCard
+          {localFiles.map((file, idx) => (
+            <div
               key={file.id}
-              file={file}
-              isKept={isFileKept(file.id)}
-              isRemoved={isFileRemoved(file.id)}
-              theme={theme}
-            />
+              className={`flex-1 relative transition-all duration-150
+                ${dragIndex === idx ? 'opacity-50 scale-95' : ''}
+                ${dragOverIndex === idx && dragIndex !== idx ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
+              `}
+              draggable
+              onDragStart={() => handleDragStart(idx)}
+              onDragOver={(e) => handleDragOver(e, idx)}
+              onDrop={() => handleDrop(idx)}
+              onDragEnd={handleDragEnd}
+            >
+              <ImageCard
+                file={file}
+                isKept={isFileKept(file.id)}
+                isRemoved={isFileRemoved(file.id)}
+                theme={theme}
+              />
+            </div>
           ))}
         </div>
       )}
@@ -133,24 +198,24 @@ function GroupCard({ group, index, total, theme }: { group: DuplicateGroup; inde
       {/* Action buttons */}
       <div className="flex gap-2 justify-center">
         <button
-          onClick={() => keepLeft(group)}
+          onClick={() => keepLeft({ ...group, files: localFiles })}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all
-            ${isFileKept(group.files[0]?.id)
+            ${isFileKept(localFiles[0]?.id)
               ? 'bg-green-600 text-white'
               : `${theme.border.replace('border-', 'bg-')} ${theme.textMuted} ${theme.hoverBg}`
             }`}
         >
-          ← 保留左侧
+          {t('compare.keepLeft')}
         </button>
         <button
-          onClick={() => keepRight(group)}
+          onClick={() => keepRight({ ...group, files: localFiles })}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all
-            ${isFileKept(group.files[group.files.length - 1]?.id)
+            ${isFileKept(localFiles[localFiles.length - 1]?.id)
               ? 'bg-green-600 text-white'
               : `${theme.border.replace('border-', 'bg-')} ${theme.textMuted} ${theme.hoverBg}`
             }`}
         >
-          保留右侧 →
+          {t('compare.keepRight')}
         </button>
       </div>
     </div>
@@ -162,6 +227,7 @@ interface CompareStepProps {
 }
 
 export default function CompareStep({ theme }: CompareStepProps) {
+  const { t } = useTranslation()
   const { duplicateGroups, setPhase, folderPath } = useScanStore()
   const { keepAllLeft, keepAllRight, clearAll, getStats } = useDedupStore()
   const [currentPage, setCurrentPage] = useState(0)
@@ -189,11 +255,11 @@ export default function CompareStep({ theme }: CompareStepProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h2 className={`text-lg font-semibold ${theme.text}`}>
-              发现 {duplicateGroups.length} 组重复照片
+              {t('compare.title', { count: duplicateGroups.length })}
             </h2>
             <div className="flex gap-2 text-xs">
-              <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded">已处理 {stats.decided}</span>
-              <span className="bg-amber-500/20 text-amber-400 px-2 py-1 rounded">待处理 {stats.pending}</span>
+              <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded">{t('compare.decided', { count: stats.decided })}</span>
+              <span className="bg-amber-500/20 text-amber-400 px-2 py-1 rounded">{t('compare.pending', { count: stats.pending })}</span>
             </div>
           </div>
 
@@ -202,19 +268,19 @@ export default function CompareStep({ theme }: CompareStepProps) {
               onClick={() => keepAllLeft(duplicateGroups)}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textMuted}`}
             >
-              全部保留左侧
+              {t('compare.keepAllLeft')}
             </button>
             <button
               onClick={() => keepAllRight(duplicateGroups)}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textMuted}`}
             >
-              全部保留右侧
+              {t('compare.keepAllRight')}
             </button>
             <button
               onClick={clearAll}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textDim}`}
             >
-              清除选择
+              {t('compare.clearSelection')}
             </button>
           </div>
         </div>
@@ -241,7 +307,7 @@ export default function CompareStep({ theme }: CompareStepProps) {
             disabled={currentPage === 0}
             className={`px-3 py-1.5 disabled:opacity-30 disabled:cursor-not-allowed text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg}`}
           >
-            ← 上一页
+            {t('compare.prevPage')}
           </button>
           <span className={`text-sm ${theme.textDim}`}>
             {currentPage + 1} / {totalPages}
@@ -251,7 +317,7 @@ export default function CompareStep({ theme }: CompareStepProps) {
             disabled={currentPage >= totalPages - 1}
             className={`px-3 py-1.5 disabled:opacity-30 disabled:cursor-not-allowed text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg}`}
           >
-            下一页 →
+            {t('compare.nextPage')}
           </button>
         </div>
 
@@ -260,7 +326,7 @@ export default function CompareStep({ theme }: CompareStepProps) {
             onClick={() => { useScanStore.getState().reset(); useDedupStore.getState().clearAll() }}
             className={`px-4 py-2 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textMuted}`}
           >
-            重新开始
+            {t('compare.restart')}
           </button>
           <button
             onClick={handleExecute}
@@ -271,7 +337,7 @@ export default function CompareStep({ theme }: CompareStepProps) {
                 : `bg-gray-500 opacity-50 cursor-not-allowed ${theme.textDim}`
               }`}
           >
-            {stats.pending > 0 ? `还有 ${stats.pending} 组未处理` : '执行去重'}
+            {stats.pending > 0 ? t('compare.pendingCount', { count: stats.pending }) : t('compare.execute')}
           </button>
         </div>
       </div>
@@ -280,23 +346,23 @@ export default function CompareStep({ theme }: CompareStepProps) {
       {showConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in">
           <div className={`rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl border transition-colors ${theme.card} ${theme.border}`}>
-            <h3 className={`text-lg font-semibold mb-3 ${theme.text}`}>确认执行去重</h3>
+            <h3 className={`text-lg font-semibold mb-3 ${theme.text}`}>{t('compare.confirmTitle')}</h3>
             <div className={`space-y-2 text-sm mb-4 ${theme.textDim}`}>
-              <p>共处理了 <span className={`font-bold ${theme.text}`}>{stats.decided}</span> 组重复照片</p>
-              <p>将保留用户选择的照片，移除重复项</p>
+              <p>{t('compare.confirmDesc', { count: stats.decided })}</p>
+              <p>{t('compare.confirmDesc2')}</p>
             </div>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowConfirm(false)}
                 className={`px-4 py-2 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textMuted}`}
               >
-                取消
+                {t('compare.cancel')}
               </button>
               <button
                 onClick={confirmExecute}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors font-semibold"
               >
-                确认执行
+                {t('compare.confirmExecute')}
               </button>
             </div>
           </div>

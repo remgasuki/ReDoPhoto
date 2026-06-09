@@ -1,5 +1,6 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import * as path from 'path'
+import * as fs from 'fs'
 import { scanFolder, type FileInfo } from '../services/scanner.service'
 import {
   computeAllSHA256,
@@ -441,6 +442,34 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     'idphoto:printLayoutPreview',
     async (_event, { photoPath, rows, cols, spacingMm }: { photoPath: string; rows: number; cols: number; spacingMm: number }) => {
       return getPrintLayoutPreview(photoPath, rows, cols, spacingMm)
+    }
+  )
+
+  // === Path validation for drag & drop ===
+  const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.bmp', '.webp', '.tiff', '.tif', '.gif'])
+
+  ipcMain.handle(
+    'path:validate',
+    async (_event, { paths }: { paths: string[] }) => {
+      return paths.map((p) => {
+        try {
+          const stat = fs.statSync(p)
+          const isDir = stat.isDirectory()
+          const ext = path.extname(p).toLowerCase()
+          const isImage = !isDir && IMAGE_EXTENSIONS.has(ext)
+          return {
+            path: p,
+            type: isDir ? 'directory' as const : 'file' as const,
+            isImage
+          }
+        } catch {
+          return {
+            path: p,
+            type: 'invalid' as const,
+            isImage: false
+          }
+        }
+      })
     }
   )
 }

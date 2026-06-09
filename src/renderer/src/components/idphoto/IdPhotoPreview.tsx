@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useIdPhotoStore } from '../../stores/idphotoStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import type { CropRect } from '../../types/idphoto'
@@ -9,6 +10,7 @@ interface IdPhotoPreviewProps {
 }
 
 export default function IdPhotoPreview({ theme }: IdPhotoPreviewProps) {
+  const { t } = useTranslation()
   const {
     sourceImageBase64, sourceWidth, sourceHeight,
     selectedPreset, selectedBgColor, cropRect, beautyParams, useAIMatting,
@@ -268,11 +270,11 @@ export default function IdPhotoPreview({ theme }: IdPhotoPreviewProps) {
       if (result.success) {
         setPhase('done')
       } else {
-        setError(result.error || '处理失败')
+        setError(result.error || t('idphoto.processFailed'))
         setPhase('done')
       }
     } catch (err) {
-      setError('处理失败: ' + String(err))
+      setError(t('idphoto.processFailed') + ': ' + String(err))
       setPhase('import')
     }
   }
@@ -284,7 +286,7 @@ export default function IdPhotoPreview({ theme }: IdPhotoPreviewProps) {
       {/* Top bar */}
       <div className={`shrink-0 border-b px-4 py-3 transition-colors ${theme.card} ${theme.border}`}>
         <div className="flex items-center justify-between">
-          <h2 className={`text-lg font-semibold ${theme.text}`}>裁剪预览</h2>
+          <h2 className={`text-lg font-semibold ${theme.text}`}>{t('idphoto.cropPreviewTitle')}</h2>
           {selectedPreset && (
             <div className="flex gap-2 text-xs">
               <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
@@ -318,32 +320,32 @@ export default function IdPhotoPreview({ theme }: IdPhotoPreviewProps) {
         <div className={`w-64 shrink-0 border-l p-4 space-y-4 overflow-y-auto ${theme.card} ${theme.border}`}>
           {selectedPreset && (
             <div>
-              <p className={`text-xs font-semibold mb-2 ${theme.textDim}`}>输出规格</p>
+              <p className={`text-xs font-semibold mb-2 ${theme.textDim}`}>{t('idphoto.outputSpec')}</p>
               <div className={`rounded-lg p-3 space-y-1.5 ${theme.inputBg}`}>
-                <InfoRow label="尺寸" value={`${selectedPreset.label}`} theme={theme} />
-                <InfoRow label="打印尺寸" value={`${selectedPreset.widthMm}×${selectedPreset.heightMm}mm`} theme={theme} />
-                <InfoRow label="像素" value={`${selectedPreset.widthPx}×${selectedPreset.heightPx}px`} theme={theme} />
-                <InfoRow label="分辨率" value={`${selectedPreset.dpi} DPI`} theme={theme} />
-                <InfoRow label="格式" value={settings.idphoto.outputFormat.toUpperCase()} theme={theme} />
+                <InfoRow label={t('idphoto.size')} value={`${selectedPreset.label}`} theme={theme} />
+                <InfoRow label={t('idphoto.printSize')} value={`${selectedPreset.widthMm}×${selectedPreset.heightMm}mm`} theme={theme} />
+                <InfoRow label={t('idphoto.pixels')} value={`${selectedPreset.widthPx}×${selectedPreset.heightPx}px`} theme={theme} />
+                <InfoRow label={t('idphoto.resolution')} value={`${selectedPreset.dpi} DPI`} theme={theme} />
+                <InfoRow label={t('idphoto.format')} value={settings.idphoto.outputFormat.toUpperCase()} theme={theme} />
               </div>
             </div>
           )}
 
           {cropRect && sourceWidth && sourceHeight && (
             <div>
-              <p className={`text-xs font-semibold mb-2 ${theme.textDim}`}>裁剪区域</p>
+              <p className={`text-xs font-semibold mb-2 ${theme.textDim}`}>{t('idphoto.cropArea')}</p>
               <div className={`rounded-lg p-3 space-y-1.5 ${theme.inputBg}`}>
-                <InfoRow label="起始 X" value={`${Math.round(cropRect.x)}px`} theme={theme} />
-                <InfoRow label="起始 Y" value={`${Math.round(cropRect.y)}px`} theme={theme} />
-                <InfoRow label="宽度" value={`${Math.round(cropRect.width)}px`} theme={theme} />
-                <InfoRow label="高度" value={`${Math.round(cropRect.height)}px`} theme={theme} />
+                <InfoRow label={t('idphoto.startX')} value={`${Math.round(cropRect.x)}px`} theme={theme} />
+                <InfoRow label={t('idphoto.startY')} value={`${Math.round(cropRect.y)}px`} theme={theme} />
+                <InfoRow label={t('idphoto.width')} value={`${Math.round(cropRect.width)}px`} theme={theme} />
+                <InfoRow label={t('idphoto.height')} value={`${Math.round(cropRect.height)}px`} theme={theme} />
               </div>
             </div>
           )}
 
           {selectedBgColor.key !== 'none' && (
             <div>
-              <p className={`text-xs font-semibold mb-2 ${theme.textDim}`}>背景颜色</p>
+              <p className={`text-xs font-semibold mb-2 ${theme.textDim}`}>{t('idphoto.bgColorLabel')}</p>
               <div className="flex items-center gap-2">
                 <div
                   className="w-6 h-6 rounded-full border border-white/20"
@@ -355,8 +357,8 @@ export default function IdPhotoPreview({ theme }: IdPhotoPreviewProps) {
           )}
 
           <div className={`text-xs ${theme.textDim}`}>
-            <p>拖动裁剪框调整位置</p>
-            <p>拖动四角调整大小</p>
+            <p>{t('idphoto.dragCropHint')}</p>
+            <p>{t('idphoto.dragCornerHint')}</p>
           </div>
         </div>
       </div>
@@ -367,13 +369,13 @@ export default function IdPhotoPreview({ theme }: IdPhotoPreviewProps) {
           onClick={() => setPhase('import')}
           className={`px-4 py-2 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textMuted}`}
         >
-          返回
+          {t('idphoto.back')}
         </button>
         <button
           onClick={handleGenerate}
           className="px-6 py-2 rounded-lg text-sm font-semibold transition-all bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25"
         >
-          选择保存位置并生成
+          {t('idphoto.saveAndGenerate')}
         </button>
       </div>
     </div>

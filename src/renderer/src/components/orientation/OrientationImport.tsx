@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next'
 import { useOrientationStore } from '../../stores/orientationStore'
+import { useDropZone } from '../../hooks/useDropZone'
 import type { ThemeClasses } from '../../types/theme'
 
 interface OrientationImportProps {
@@ -6,7 +8,17 @@ interface OrientationImportProps {
 }
 
 export default function OrientationImport({ theme }: OrientationImportProps) {
+  const { t } = useTranslation()
   const { setPhase, setFolderPath, setFiles, setOrientationInfos, setError, folderPath, files } = useOrientationStore()
+
+  const { isDragActive, dropZoneProps } = useDropZone({
+    accept: 'folder',
+    onDropFolder: (path) => {
+      setFolderPath(path)
+      setError(null)
+    },
+    onError: (msg) => setError(msg)
+  })
 
   const handleSelectFolder = async () => {
     try {
@@ -16,7 +28,7 @@ export default function OrientationImport({ theme }: OrientationImportProps) {
         setError(null)
       }
     } catch (err) {
-      setError('选择文件夹失败: ' + String(err))
+      setError(t('orientation.selectFolderError') + ': ' + String(err))
     }
   }
 
@@ -28,7 +40,7 @@ export default function OrientationImport({ theme }: OrientationImportProps) {
     try {
       const scannedFiles = await window.api.scanFolder(folderPath)
       if (scannedFiles.length === 0) {
-        setError('未找到任何图片文件')
+        setError(t('orientation.noImagesError'))
         setPhase('import')
         return
       }
@@ -38,7 +50,7 @@ export default function OrientationImport({ theme }: OrientationImportProps) {
       setOrientationInfos(orientationInfos)
       setPhase('preview')
     } catch (err) {
-      setError('扫描失败: ' + String(err))
+      setError(t('orientation.scanError') + ': ' + String(err))
       setPhase('import')
     }
   }
@@ -48,15 +60,27 @@ export default function OrientationImport({ theme }: OrientationImportProps) {
       <div className="max-w-lg w-full">
         <div
           className={`border-2 border-dashed rounded-xl p-10 text-center transition-all cursor-pointer
-            ${theme.hoverBg} hover:border-blue-400`}
+            ${isDragActive ? 'border-blue-400 bg-blue-500/10 scale-[1.02]' : theme.hoverBg + ' hover:border-blue-400'}`}
           onClick={handleSelectFolder}
+          {...dropZoneProps}
         >
-          <svg className={`w-16 h-16 mx-auto mb-4 ${theme.textDim}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          <p className={`text-lg mb-2 ${theme.textMuted}`}>点击选择照片文件夹</p>
-          <p className={`text-sm ${theme.textDim}`}>扫描照片的 EXIF 方向元数据</p>
+          {isDragActive ? (
+            <>
+              <svg className={`w-16 h-16 mx-auto mb-4 text-blue-400`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p className={`text-lg mb-2 text-blue-400`}>{t('import.dropFolderHere')}</p>
+            </>
+          ) : (
+            <>
+              <svg className={`w-16 h-16 mx-auto mb-4 ${theme.textDim}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <p className={`text-lg mb-2 ${theme.textMuted}`}>{t('orientation.selectFolder')}</p>
+              <p className={`text-sm ${theme.textDim}`}>{t('import.dragFolderHint')}</p>
+            </>
+          )}
         </div>
 
         {folderPath && (
@@ -70,7 +94,7 @@ export default function OrientationImport({ theme }: OrientationImportProps) {
             </div>
             {files.length > 0 && (
               <div className={`flex gap-4 text-xs mt-2 ${theme.textDim}`}>
-                <span>{files.length} 张图片</span>
+                <span>{t('orientation.imageCount', { count: files.length })}</span>
               </div>
             )}
           </div>
@@ -91,7 +115,7 @@ export default function OrientationImport({ theme }: OrientationImportProps) {
               : `bg-gray-500 opacity-50 cursor-not-allowed ${theme.textDim}`
             }`}
         >
-          开始扫描方向信息
+          {t('orientation.startScan')}
         </button>
       </div>
     </div>

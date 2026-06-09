@@ -1,5 +1,7 @@
+import { useTranslation } from 'react-i18next'
 import { useRenameStore } from '../../stores/renameStore'
 import { useSettingsStore } from '../../stores/settingsStore'
+import { useDropZone } from '../../hooks/useDropZone'
 import type { ThemeClasses } from '../../types/theme'
 
 interface RenameImportProps {
@@ -7,8 +9,18 @@ interface RenameImportProps {
 }
 
 export default function RenameImport({ theme }: RenameImportProps) {
+  const { t } = useTranslation()
   const { setPhase, setFolderPath, setFiles, setExifInfos, setPreviews, setError, folderPath, files } = useRenameStore()
   const settings = useSettingsStore((s) => s.settings)
+
+  const { isDragActive, dropZoneProps } = useDropZone({
+    accept: 'folder',
+    onDropFolder: (path) => {
+      setFolderPath(path)
+      setError(null)
+    },
+    onError: (msg) => setError(msg)
+  })
 
   const handleSelectFolder = async () => {
     try {
@@ -18,7 +30,7 @@ export default function RenameImport({ theme }: RenameImportProps) {
         setError(null)
       }
     } catch (err) {
-      setError('选择文件夹失败: ' + String(err))
+      setError(t('rename.selectFolderError') + ': ' + String(err))
     }
   }
 
@@ -30,7 +42,7 @@ export default function RenameImport({ theme }: RenameImportProps) {
     try {
       const scannedFiles = await window.api.scanFolder(folderPath)
       if (scannedFiles.length === 0) {
-        setError('未找到任何图片文件，请选择包含照片的文件夹')
+        setError(t('rename.noImagesError'))
         setPhase('import')
         return
       }
@@ -47,7 +59,7 @@ export default function RenameImport({ theme }: RenameImportProps) {
       setPreviews(previews.map(p => ({ ...p, selected: true })))
       setPhase('preview')
     } catch (err) {
-      setError('扫描失败: ' + String(err))
+      setError(t('rename.scanError') + ': ' + String(err))
       setPhase('import')
     }
   }
@@ -57,15 +69,27 @@ export default function RenameImport({ theme }: RenameImportProps) {
       <div className="max-w-lg w-full">
         <div
           className={`border-2 border-dashed rounded-xl p-10 text-center transition-all cursor-pointer
-            ${theme.border.replace('border-', 'border-')} ${theme.hoverBg} hover:border-blue-400`}
+            ${isDragActive ? 'border-blue-400 bg-blue-500/10 scale-[1.02]' : `${theme.border.replace('border-', 'border-')} ${theme.hoverBg} hover:border-blue-400`}`}
           onClick={handleSelectFolder}
+          {...dropZoneProps}
         >
-          <svg className={`w-16 h-16 mx-auto mb-4 ${theme.textDim}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-          <p className={`text-lg mb-2 ${theme.textMuted}`}>点击选择照片文件夹</p>
-          <p className={`text-sm ${theme.textDim}`}>选择包含需要重命名照片的文件夹</p>
+          {isDragActive ? (
+            <>
+              <svg className={`w-16 h-16 mx-auto mb-4 text-blue-400`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p className={`text-lg mb-2 text-blue-400`}>{t('import.dropFolderHere')}</p>
+            </>
+          ) : (
+            <>
+              <svg className={`w-16 h-16 mx-auto mb-4 ${theme.textDim}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              <p className={`text-lg mb-2 ${theme.textMuted}`}>{t('rename.selectFolder')}</p>
+              <p className={`text-sm ${theme.textDim}`}>{t('import.dragFolderHint')}</p>
+            </>
+          )}
         </div>
 
         {folderPath && (
@@ -79,7 +103,7 @@ export default function RenameImport({ theme }: RenameImportProps) {
             </div>
             {files.length > 0 && (
               <div className={`flex gap-4 text-xs mt-2 ${theme.textDim}`}>
-                <span>{files.length} 张图片</span>
+                <span>{t('rename.imageCount', { count: files.length })}</span>
               </div>
             )}
           </div>
@@ -100,7 +124,7 @@ export default function RenameImport({ theme }: RenameImportProps) {
               : `bg-gray-500 opacity-50 cursor-not-allowed ${theme.textDim}`
             }`}
         >
-          开始扫描 EXIF 数据
+          {t('rename.startScan')}
         </button>
       </div>
     </div>

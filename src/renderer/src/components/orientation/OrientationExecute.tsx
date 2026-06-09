@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useOrientationStore } from '../../stores/orientationStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import type { ThemeClasses } from '../../types/theme'
@@ -8,6 +9,7 @@ interface OrientationExecuteProps {
 }
 
 export default function OrientationExecute({ theme }: OrientationExecuteProps) {
+  const { t } = useTranslation()
   const { phase, orientationInfos, selectedIds, folderPath, setPhase, setResult, result } = useOrientationStore()
   const settings = useSettingsStore((s) => s.settings)
   const [executing, setExecuting] = useState(false)
@@ -33,7 +35,7 @@ export default function OrientationExecute({ theme }: OrientationExecuteProps) {
       setResult(fixResult)
       setPhase('done')
     } catch (err) {
-      setError('执行失败: ' + String(err))
+      setError(t('orientation.failedError') + ': ' + String(err))
       setPhase('preview')
     } finally {
       setExecuting(false)
@@ -46,13 +48,13 @@ export default function OrientationExecute({ theme }: OrientationExecuteProps) {
         <div className="max-w-md w-full text-center">
           <div className={`rounded-xl p-8 transition-colors ${theme.card}`}>
             <div className="text-5xl mb-4">⚙️</div>
-            <h2 className={`text-xl font-semibold mb-2 ${theme.text}`}>正在修复方向...</h2>
+            <h2 className={`text-xl font-semibold mb-2 ${theme.text}`}>{t('orientation.fixing')}</h2>
             <div className={`flex items-center justify-center gap-2 ${theme.textDim}`}>
               <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              <span>处理中...</span>
+              <span>{t('orientation.processing')}</span>
             </div>
           </div>
         </div>
@@ -67,21 +69,21 @@ export default function OrientationExecute({ theme }: OrientationExecuteProps) {
           {error ? (
             <>
               <div className="text-5xl mb-4">❌</div>
-              <h2 className="text-xl font-semibold text-red-400 mb-2">执行出错</h2>
+              <h2 className="text-xl font-semibold text-red-400 mb-2">{t('orientation.errorTitle')}</h2>
               <p className="text-sm text-red-300 mb-6">{error}</p>
             </>
           ) : (
             <>
               <div className="text-5xl mb-4">✅</div>
-              <h2 className="text-xl font-semibold text-green-400 mb-2">方向修复完成！</h2>
+              <h2 className="text-xl font-semibold text-green-400 mb-2">{t('orientation.successTitle')}</h2>
               {result && (
                 <div className={`space-y-2 text-sm mb-6 ${theme.textDim}`}>
                   <p>
-                    成功修复: <span className="text-green-400 font-bold">{result.success}</span> 个文件
+                    {t('orientation.successCount', { count: result.success })}
                   </p>
                   {result.errors.length > 0 && (
                     <p>
-                      跳过: <span className="text-amber-400 font-bold">{result.errors.length}</span> 个文件
+                      {t('orientation.skippedCount', { count: result.errors.length })}
                     </p>
                   )}
                 </div>
@@ -92,7 +94,7 @@ export default function OrientationExecute({ theme }: OrientationExecuteProps) {
             onClick={() => useOrientationStore.getState().reset()}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-colors"
           >
-            处理新的文件夹
+            {t('orientation.processNew')}
           </button>
         </div>
       </div>

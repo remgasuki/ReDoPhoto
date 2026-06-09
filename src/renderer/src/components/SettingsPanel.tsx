@@ -1,24 +1,39 @@
+import { useTranslation } from 'react-i18next'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useNavStore } from '../stores/navStore'
 import { themes } from '../types/theme'
+import type { Language } from '../types'
+
+const LANGUAGES: { key: Language; label: string }[] = [
+  { key: 'zh-CN', label: '简体中文' },
+  { key: 'zh-TW', label: '繁體中文' },
+  { key: 'en', label: 'English' },
+  { key: 'ja', label: '日本語' },
+]
 
 interface SettingsPanelProps {
   onClose: () => void
 }
 
 export default function SettingsPanel({ onClose }: SettingsPanelProps) {
+  const { t, i18n: i18nInst } = useTranslation()
   const { settings, updateSettings } = useSettingsStore()
   const activeFeature = useNavStore((s) => s.activeFeature)
 
   const currentTheme = themes.find(t => t.key === settings.themeColor) ?? themes[0]
   const theme = currentTheme.classes
 
+  const handleLanguageChange = (lang: Language) => {
+    updateSettings({ language: lang })
+    i18nInst.changeLanguage(lang)
+  }
+
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in">
       <div className={`rounded-xl w-full max-w-md mx-4 shadow-2xl border overflow-hidden max-h-[90vh] flex flex-col transition-colors ${theme.card} ${theme.border}`}>
         {/* Header */}
         <div className={`flex items-center justify-between px-6 py-4 border-b shrink-0 ${theme.border}`}>
-          <h2 className={`text-lg font-semibold ${theme.text}`}>设置</h2>
+          <h2 className={`text-lg font-semibold ${theme.text}`}>{t('settings.title')}</h2>
           <button
             onClick={onClose}
             className={`p-1 rounded transition-colors ${theme.hoverBg} ${theme.textDim}`}
@@ -33,7 +48,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
         <div className="p-6 space-y-6 overflow-y-auto">
           {/* Theme color */}
           <div>
-            <label className={`block text-sm font-medium mb-3 ${theme.textMuted}`}>主题颜色</label>
+            <label className={`block text-sm font-medium mb-3 ${theme.textMuted}`}>{t('settings.themeColor')}</label>
             <div className="grid grid-cols-7 gap-2">
               {themes.map((t) => (
                 <button
@@ -56,9 +71,29 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
             </div>
           </div>
 
+          {/* Language */}
+          <div>
+            <label className={`block text-sm font-medium mb-3 ${theme.textMuted}`}>{t('settings.language')}</label>
+            <div className="grid grid-cols-4 gap-2">
+              {LANGUAGES.map((lang) => (
+                <button
+                  key={lang.key}
+                  onClick={() => handleLanguageChange(lang.key)}
+                  className={`px-3 py-2 rounded-lg text-sm transition-all
+                    ${settings.language === lang.key
+                      ? 'ring-2 ring-blue-500 bg-blue-500/10 text-blue-400 font-semibold'
+                      : `${theme.hoverBg} ${theme.textMuted}`
+                    }`}
+                >
+                  {lang.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Output folder suffix (global) */}
           <div>
-            <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>输出文件夹后缀</label>
+            <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>{t('settings.outputFolderSuffix')}</label>
             <input
               type="text"
               value={settings.outputFolderSuffix}
@@ -67,23 +102,23 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               placeholder="New"
             />
             <p className={`text-xs mt-1 ${theme.textDim}`}>
-              输出文件夹将命名为: 原文件夹名 + _{settings.outputFolderSuffix}
+              {t('settings.outputFolderHint', { suffix: settings.outputFolderSuffix })}
             </p>
           </div>
 
           {/* Feature-specific settings */}
           {activeFeature === 'dedup' && (
             <div className={`border-t pt-4 ${theme.border}`}>
-              <h3 className={`text-sm font-semibold mb-4 text-blue-400`}>照片去重设置</h3>
+              <h3 className={`text-sm font-semibold mb-4 text-blue-400`}>{t('settings.dedup.title')}</h3>
 
               {/* Hash mode */}
               <div className="mb-4">
-                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>检测模式</label>
+                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>{t('settings.dedup.hashMode')}</label>
                 <div className="space-y-2">
                   {([
-                    { value: 'sha256' as const, label: '精确匹配 (SHA-256)', desc: '基于文件内容哈希，仅检测完全相同的文件' },
-                    { value: 'phash' as const, label: '相似检测 (pHash)', desc: '基于感知哈希，检测视觉相似的照片' },
-                    { value: 'both' as const, label: '组合模式', desc: '同时使用两种检测方式' }
+                    { value: 'sha256' as const, label: t('settings.dedup.hashMode_sha256'), desc: t('settings.dedup.hashMode_sha256_desc') },
+                    { value: 'phash' as const, label: t('settings.dedup.hashMode_phash'), desc: t('settings.dedup.hashMode_phash_desc') },
+                    { value: 'both' as const, label: t('settings.dedup.hashMode_both'), desc: t('settings.dedup.hashMode_both_desc') }
                   ]).map((option) => (
                     <label
                       key={option.value}
@@ -110,7 +145,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               {(settings.dedup.hashMode === 'phash' || settings.dedup.hashMode === 'both') && (
                 <div className="mb-4">
                   <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>
-                    相似度阈值: <span className="text-blue-400">{settings.dedup.phashThreshold}</span>
+                    {t('settings.dedup.phashThreshold')}: <span className="text-blue-400">{settings.dedup.phashThreshold}</span>
                   </label>
                   <input
                     type="range"
@@ -121,15 +156,15 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                     className="w-full accent-blue-500"
                   />
                   <div className={`flex justify-between text-xs mt-1 ${theme.textDim}`}>
-                    <span>更严格 (1)</span>
-                    <span>更宽松 (15)</span>
+                    <span>{t('settings.dedup.phashStrict')}</span>
+                    <span>{t('settings.dedup.phashLoose')}</span>
                   </div>
                 </div>
               )}
 
               {/* Output mode */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>输出方式</label>
+                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>{t('settings.dedup.outputMode')}</label>
                 <div className="space-y-2">
                   <label
                     className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors
@@ -143,8 +178,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                       className="mt-0.5 accent-blue-500"
                     />
                     <div>
-                      <div className={`text-sm ${theme.text}`}>复制到新文件夹</div>
-                      <div className={`text-xs ${theme.textDim}`}>保留文件复制到新文件夹，原文件夹不变</div>
+                      <div className={`text-sm ${theme.text}`}>{t('settings.dedup.outputMode_copy')}</div>
+                      <div className={`text-xs ${theme.textDim}`}>{t('settings.dedup.outputMode_copy_desc')}</div>
                     </div>
                   </label>
                   <label
@@ -159,8 +194,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                       className="mt-0.5 accent-red-500"
                     />
                     <div>
-                      <div className={`text-sm ${theme.text}`}>原位删除</div>
-                      <div className="text-xs text-red-400/70">直接删除重复文件，此操作不可撤销！</div>
+                      <div className={`text-sm ${theme.text}`}>{t('settings.dedup.outputMode_delete')}</div>
+                      <div className="text-xs text-red-400/70">{t('settings.dedup.outputMode_delete_desc')}</div>
                     </div>
                   </label>
                 </div>
@@ -170,11 +205,11 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
 
           {activeFeature === 'rename' && (
             <div className={`border-t pt-4 ${theme.border}`}>
-              <h3 className={`text-sm font-semibold mb-4 text-blue-400`}>智能批量重命名设置</h3>
+              <h3 className={`text-sm font-semibold mb-4 text-blue-400`}>{t('settings.rename.title')}</h3>
 
               {/* Name format */}
               <div className="mb-4">
-                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>文件名格式</label>
+                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>{t('settings.rename.nameFormat')}</label>
                 <input
                   type="text"
                   value={settings.rename.nameFormat}
@@ -183,13 +218,13 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   placeholder="{date}_{location}_{seq}"
                 />
                 <p className={`text-xs mt-1 ${theme.textDim}`}>
-                  变量: {'{date}'} 日期, {'{location}'} 地点, {'{seq}'} 序号
+                  {t('settings.rename.nameFormatHint', { date: '{date}', location: '{location}', seq: '{seq}' })}
                 </p>
               </div>
 
               {/* Date format */}
               <div className="mb-4">
-                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>日期格式</label>
+                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>{t('settings.rename.dateFormat')}</label>
                 <select
                   value={settings.rename.dateFormat}
                   onChange={(e) => updateSettings({ rename: { dateFormat: e.target.value } })}
@@ -203,7 +238,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
 
               {/* Output mode */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>输出方式</label>
+                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>{t('settings.rename.outputMode')}</label>
                 <div className="space-y-2">
                   <label
                     className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors
@@ -217,8 +252,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                       className="mt-0.5 accent-blue-500"
                     />
                     <div>
-                      <div className={`text-sm ${theme.text}`}>复制到新文件夹</div>
-                      <div className={`text-xs ${theme.textDim}`}>以新文件名复制到新文件夹</div>
+                      <div className={`text-sm ${theme.text}`}>{t('settings.rename.outputMode_copy')}</div>
+                      <div className={`text-xs ${theme.textDim}`}>{t('settings.rename.outputMode_copy_desc')}</div>
                     </div>
                   </label>
                   <label
@@ -233,8 +268,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                       className="mt-0.5 accent-amber-500"
                     />
                     <div>
-                      <div className={`text-sm ${theme.text}`}>原位重命名</div>
-                      <div className="text-xs text-amber-400/70">直接修改原文件名，此操作不可撤销！</div>
+                      <div className={`text-sm ${theme.text}`}>{t('settings.rename.outputMode_renameInPlace')}</div>
+                      <div className="text-xs text-amber-400/70">{t('settings.rename.outputMode_renameInPlace_desc')}</div>
                     </div>
                   </label>
                 </div>
@@ -244,11 +279,11 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
 
           {activeFeature === 'orientation' && (
             <div className={`border-t pt-4 ${theme.border}`}>
-              <h3 className={`text-sm font-semibold mb-4 text-blue-400`}>无损旋转/裁剪设置</h3>
+              <h3 className={`text-sm font-semibold mb-4 text-blue-400`}>{t('settings.orientation.title')}</h3>
 
               {/* Output mode */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>输出方式</label>
+                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>{t('settings.orientation.outputMode')}</label>
                 <div className="space-y-2">
                   <label
                     className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors
@@ -262,8 +297,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                       className="mt-0.5 accent-blue-500"
                     />
                     <div>
-                      <div className={`text-sm ${theme.text}`}>复制到新文件夹</div>
-                      <div className={`text-xs ${theme.textDim}`}>仅复制已修复的文件到新目录</div>
+                      <div className={`text-sm ${theme.text}`}>{t('settings.orientation.outputMode_copy')}</div>
+                      <div className={`text-xs ${theme.textDim}`}>{t('settings.orientation.outputMode_copy_desc')}</div>
                     </div>
                   </label>
                   <label
@@ -278,8 +313,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                       className="mt-0.5 accent-amber-500"
                     />
                     <div>
-                      <div className={`text-sm ${theme.text}`}>原位修复</div>
-                      <div className="text-xs text-amber-400/70">直接覆盖原始文件，此操作不可撤销！</div>
+                      <div className={`text-sm ${theme.text}`}>{t('settings.orientation.outputMode_fixInPlace')}</div>
+                      <div className="text-xs text-amber-400/70">{t('settings.orientation.outputMode_fixInPlace_desc')}</div>
                     </div>
                   </label>
                 </div>
@@ -289,11 +324,11 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
 
           {activeFeature === 'idphoto' && (
             <div className={`border-t pt-4 ${theme.border}`}>
-              <h3 className={`text-sm font-semibold mb-4 text-blue-400`}>证件照制作设置</h3>
+              <h3 className={`text-sm font-semibold mb-4 text-blue-400`}>{t('settings.idphoto.title')}</h3>
 
               {/* Output format */}
               <div className="mb-4">
-                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>输出格式</label>
+                <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>{t('settings.idphoto.outputFormat')}</label>
                 <div className="space-y-2">
                   <label
                     className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors
@@ -308,7 +343,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                     />
                     <div>
                       <div className={`text-sm ${theme.text}`}>JPEG</div>
-                      <div className={`text-xs ${theme.textDim}`}>常用格式，适合打印和分享</div>
+                      <div className={`text-xs ${theme.textDim}`}>{t('settings.idphoto.format_jpg_desc')}</div>
                     </div>
                   </label>
                   <label
@@ -324,7 +359,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                     />
                     <div>
                       <div className={`text-sm ${theme.text}`}>PNG</div>
-                      <div className={`text-xs ${theme.textDim}`}>无损格式，文件较大</div>
+                      <div className={`text-xs ${theme.textDim}`}>{t('settings.idphoto.format_png_desc')}</div>
                     </div>
                   </label>
                 </div>
@@ -333,7 +368,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               {/* Quality */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme.textMuted}`}>
-                  输出质量: <span className="text-blue-400">{settings.idphoto.quality}</span>
+                  {t('settings.idphoto.quality')}: <span className="text-blue-400">{settings.idphoto.quality}</span>
                 </label>
                 <input
                   type="range"
@@ -344,8 +379,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   className="w-full accent-blue-500"
                 />
                 <div className={`flex justify-between text-xs mt-1 ${theme.textDim}`}>
-                  <span>较小文件 (50)</span>
-                  <span>最高质量 (100)</span>
+                  <span>{t('settings.idphoto.qualityLow')}</span>
+                  <span>{t('settings.idphoto.qualityHigh')}</span>
                 </div>
               </div>
             </div>
@@ -358,7 +393,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
             onClick={onClose}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors font-semibold"
           >
-            完成
+            {t('settings.done')}
           </button>
         </div>
       </div>

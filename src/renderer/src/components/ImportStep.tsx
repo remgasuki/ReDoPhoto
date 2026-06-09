@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useScanStore } from '../stores/scanStore'
 import { useSettingsStore } from '../stores/settingsStore'
+import { useDropZone } from '../hooks/useDropZone'
 import type { ThemeClasses } from '../types/theme'
 
 interface ImportStepProps {
@@ -8,9 +9,18 @@ interface ImportStepProps {
 }
 
 export default function ImportStep({ theme }: ImportStepProps) {
+  const { t } = useTranslation()
   const { setPhase, setFolderPath, setFiles, setProgress, setError, folderPath, files } = useScanStore()
   const settings = useSettingsStore((s) => s.settings)
-  const [dragActive, setDragActive] = useState(false)
+
+  const { isDragActive, dropZoneProps } = useDropZone({
+    accept: 'folder',
+    onDropFolder: (path) => {
+      setFolderPath(path)
+      setError(null)
+    },
+    onError: (msg) => setError(msg)
+  })
 
   const handleSelectFolder = async () => {
     try {
@@ -20,7 +30,7 @@ export default function ImportStep({ theme }: ImportStepProps) {
         setError(null)
       }
     } catch (err) {
-      setError('选择文件夹失败: ' + String(err))
+      setError(t('import.selectFolderError') + ': ' + String(err))
     }
   }
 
@@ -36,7 +46,7 @@ export default function ImportStep({ theme }: ImportStepProps) {
       cleanupScan()
 
       if (scannedFiles.length === 0) {
-        setError('未找到任何图片文件，请选择包含照片的文件夹')
+        setError(t('import.noImagesError'))
         setPhase('import')
         return
       }
@@ -74,14 +84,14 @@ export default function ImportStep({ theme }: ImportStepProps) {
       setProgress(null)
 
       if (groups.length === 0) {
-        setError('未发现重复照片！所有照片都是唯一的。')
+        setError(t('import.noDupesFound'))
         setPhase('import')
         return
       }
 
       setPhase('comparing')
     } catch (err) {
-      setError('扫描失败: ' + String(err))
+      setError(t('import.selectFolderError') + ': ' + String(err))
       setPhase('import')
     }
   }
@@ -92,12 +102,14 @@ export default function ImportStep({ theme }: ImportStepProps) {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
+  const stepLabels = [t('import.step_import'), t('import.step_scan'), t('import.step_compare'), t('import.step_execute')]
+
   return (
     <div className="h-full flex items-center justify-center p-8 animate-fade-in">
       <div className="max-w-lg w-full">
         {/* Step indicator */}
         <div className="flex items-center justify-center gap-3 mb-8">
-          {['导入', '扫描', '对比', '执行'].map((step, i) => (
+          {stepLabels.map((step, i) => (
             <div key={step} className="flex items-center gap-2">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors
                 ${i === 0 ? 'bg-blue-500 text-white' : `${theme.border} ${theme.textDim}`}`}>
@@ -112,18 +124,27 @@ export default function ImportStep({ theme }: ImportStepProps) {
         {/* Folder selection */}
         <div
           className={`border-2 border-dashed rounded-xl p-10 text-center transition-all cursor-pointer
-            ${dragActive ? 'border-blue-400 bg-blue-500/10' : `${theme.border.replace('border-', 'border-')} ${theme.hoverBg} hover:border-blue-400`}`}
+            ${isDragActive ? 'border-blue-400 bg-blue-500/10 scale-[1.02]' : `${theme.border.replace('border-', 'border-')} ${theme.hoverBg} hover:border-blue-400`}`}
           onClick={handleSelectFolder}
-          onDragEnter={() => setDragActive(true)}
-          onDragLeave={() => setDragActive(false)}
-          onDrop={(e) => { e.preventDefault(); setDragActive(false) }}
+          {...dropZoneProps}
         >
-          <svg className={`w-16 h-16 mx-auto mb-4 ${theme.textDim}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-          </svg>
-          <p className={`text-lg mb-2 ${theme.textMuted}`}>点击选择照片文件夹</p>
-          <p className={`text-sm ${theme.textDim}`}>支持 JPG、PNG、GIF、BMP、WebP、TIFF 格式</p>
+          {isDragActive ? (
+            <>
+              <svg className={`w-16 h-16 mx-auto mb-4 text-blue-400`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p className={`text-lg mb-2 text-blue-400`}>{t('import.dropFolderHere')}</p>
+            </>
+          ) : (
+            <>
+              <svg className={`w-16 h-16 mx-auto mb-4 ${theme.textDim}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+              <p className={`text-lg mb-2 ${theme.textMuted}`}>{t('import.selectFolder')}</p>
+              <p className={`text-sm ${theme.textDim}`}>{t('import.dragFolderHint')}</p>
+            </>
+          )}
         </div>
 
         {/* Selected folder info */}
@@ -138,8 +159,8 @@ export default function ImportStep({ theme }: ImportStepProps) {
             </div>
             {files.length > 0 && (
               <div className={`flex gap-4 text-xs mt-2 ${theme.textDim}`}>
-                <span>{files.length} 张图片</span>
-                <span>总大小: {formatSize(files.reduce((sum, f) => sum + f.size, 0))}</span>
+                <span>{t('import.imageCount', { count: files.length })}</span>
+                <span>{t('import.totalSize', { size: formatSize(files.reduce((sum, f) => sum + f.size, 0)) })}</span>
               </div>
             )}
           </div>
@@ -162,15 +183,15 @@ export default function ImportStep({ theme }: ImportStepProps) {
               : `bg-gray-500 opacity-50 cursor-not-allowed ${theme.textDim}`
             }`}
         >
-          开始扫描重复照片
+          {t('import.startScan')}
         </button>
 
         {/* Hash mode indicator */}
         <div className={`mt-3 text-center text-xs ${theme.textDim}`}>
-          检测模式：
-          {settings.dedup.hashMode === 'sha256' && '精确匹配 (SHA-256)'}
-          {settings.dedup.hashMode === 'phash' && '相似检测 (pHash)'}
-          {settings.dedup.hashMode === 'both' && '组合模式 (SHA-256 + pHash)'}
+          {t('settings.dedup.hashMode')}：
+          {settings.dedup.hashMode === 'sha256' && t('import.hashMode_sha256')}
+          {settings.dedup.hashMode === 'phash' && t('import.hashMode_phash')}
+          {settings.dedup.hashMode === 'both' && t('import.hashMode_both')}
         </div>
       </div>
     </div>

@@ -6,6 +6,7 @@ export type {
   DedupDecision,
   DedupSettings,
   ThemeColor,
+  Language,
   DedupConfig,
   RenameConfig,
   OrientationConfig,
@@ -110,6 +111,9 @@ interface ElectronAPI {
   // Print layout
   generatePrintLayout: (params: import('./index').PrintLayoutParams) => Promise<import('./index').PrintLayoutResult>
   getPrintLayoutPreview: (photoPath: string, rows: number, cols: number, spacingMm: number) => Promise<string>
+
+  // Path validation
+  validatePaths: (paths: string[]) => Promise<Array<{ path: string; type: 'file' | 'directory' | 'invalid'; isImage: boolean }>>
 }
 
 declare global {

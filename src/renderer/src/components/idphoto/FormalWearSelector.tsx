@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useIdPhotoStore } from '../../stores/idphotoStore'
 import { FORMAL_WEAR_TEMPLATES } from '../../types/idphoto'
 import type { FormalWearTemplate } from '../../types/idphoto'
@@ -8,11 +9,12 @@ interface FormalWearSelectorProps {
 }
 
 export default function FormalWearSelector({ theme }: FormalWearSelectorProps) {
+  const { t } = useTranslation()
   const { selectedFormalWear, setSelectedFormalWear } = useIdPhotoStore()
 
   return (
     <div>
-      <h3 className={`text-sm font-semibold mb-3 ${theme.textMuted}`}>正装模板（可选）</h3>
+      <h3 className={`text-sm font-semibold mb-3 ${theme.textMuted}`}>{t('idphoto.formalWear.title')}</h3>
       <div className="flex gap-3">
         {/* None option */}
         <button
@@ -28,7 +30,7 @@ export default function FormalWearSelector({ theme }: FormalWearSelectorProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <span className={`text-[10px] ${!selectedFormalWear ? 'text-blue-400' : theme.textDim}`}>不使用</span>
+          <span className={`text-[10px] ${!selectedFormalWear ? 'text-blue-400' : theme.textDim}`}>{t('idphoto.formalWear.none')}</span>
         </button>
 
         {FORMAL_WEAR_TEMPLATES.map((tpl) => (
@@ -42,7 +44,7 @@ export default function FormalWearSelector({ theme }: FormalWearSelectorProps) {
         ))}
       </div>
       <p className={`text-xs mt-2 ${theme.textDim}`}>
-        正装模板将叠加在人物下方，适用于标准证件照场景
+        {t('idphoto.formalWear.hint')}
       </p>
     </div>
   )

@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { FileInfo } from '../types'
 import type { ThemeClasses } from '../types/theme'
 
@@ -8,6 +9,7 @@ interface SyncImageViewerProps {
 }
 
 export default function SyncImageViewer({ files, theme }: SyncImageViewerProps) {
+  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
   const [translate, setTranslate] = useState({ x: 0, y: 0 })
@@ -127,7 +129,7 @@ export default function SyncImageViewer({ files, theme }: SyncImageViewerProps) 
             />
           ) : !loading ? (
             <div className={`w-full h-full flex items-center justify-center text-sm ${theme.textDim}`}>
-              无法加载
+              {t('syncViewer.loadError')}
             </div>
           ) : null}
         </div>
@@ -142,7 +144,7 @@ export default function SyncImageViewer({ files, theme }: SyncImageViewerProps) 
       {/* Instructions */}
       {scale <= 1 && !loading && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/50 text-white/60 text-xs">
-          滚轮缩放 · 拖动平移 · 双击重置
+          {t('syncViewer.instructions')}
         </div>
       )}
 

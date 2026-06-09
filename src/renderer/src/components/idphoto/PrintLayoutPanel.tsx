@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useIdPhotoStore } from '../../stores/idphotoStore'
 import { PRINT_LAYOUT_PRESETS } from '../../types/idphoto'
 import type { ThemeClasses } from '../../types/theme'
@@ -8,6 +9,7 @@ interface PrintLayoutPanelProps {
 }
 
 export default function PrintLayoutPanel({ theme }: PrintLayoutPanelProps) {
+  const { t } = useTranslation()
   const {
     outputPath, printLayoutPreview, printLayoutResult,
     setPrintLayoutPreview, setPrintLayoutResult, setPhase, setError
@@ -74,7 +76,7 @@ export default function PrintLayoutPanel({ theme }: PrintLayoutPanelProps) {
 
       setPrintLayoutResult(result)
     } catch (err) {
-      setError('排版生成失败: ' + String(err))
+      setError(t('idphoto.printLayout.generateFailed') + ': ' + String(err))
     } finally {
       setLoading(false)
     }
@@ -85,7 +87,7 @@ export default function PrintLayoutPanel({ theme }: PrintLayoutPanelProps) {
       {/* Top bar */}
       <div className={`shrink-0 border-b px-4 py-3 transition-colors ${theme.card} ${theme.border}`}>
         <div className="flex items-center justify-between">
-          <h2 className={`text-lg font-semibold ${theme.text}`}>打印排版 (6寸相纸)</h2>
+          <h2 className={`text-lg font-semibold ${theme.text}`}>{t('idphoto.printLayout.title')}</h2>
         </div>
       </div>
 
@@ -99,7 +101,7 @@ export default function PrintLayoutPanel({ theme }: PrintLayoutPanelProps) {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              <p className={`text-xs ${theme.textDim}`}>生成预览中...</p>
+              <p className={`text-xs ${theme.textDim}`}>{t('idphoto.printLayout.generatingPreview')}</p>
             </div>
           ) : printLayoutPreview ? (
             <img
@@ -108,7 +110,7 @@ export default function PrintLayoutPanel({ theme }: PrintLayoutPanelProps) {
               className="max-w-full max-h-full rounded-lg shadow-lg border border-white/10"
             />
           ) : (
-            <p className={`text-sm ${theme.textDim}`}>请先选择一张证件照</p>
+            <p className={`text-sm ${theme.textDim}`}>{t('idphoto.printLayout.selectIdPhoto')}</p>
           )}
         </div>
 
@@ -116,7 +118,7 @@ export default function PrintLayoutPanel({ theme }: PrintLayoutPanelProps) {
         <div className={`w-72 shrink-0 border-l p-4 space-y-4 overflow-y-auto ${theme.card} ${theme.border}`}>
           {/* Preset selection */}
           <div>
-            <p className={`text-xs font-semibold mb-2 ${theme.textDim}`}>排版预设</p>
+            <p className={`text-xs font-semibold mb-2 ${theme.textDim}`}>{t('idphoto.printLayout.presets')}</p>
             <div className="flex flex-wrap gap-1.5">
               {PRINT_LAYOUT_PRESETS.map((p) => (
                 <button
@@ -138,7 +140,7 @@ export default function PrintLayoutPanel({ theme }: PrintLayoutPanelProps) {
           {selectedPreset === 'custom' && (
             <div className="flex gap-2">
               <div>
-                <label className={`text-[10px] ${theme.textDim}`}>行数</label>
+                <label className={`text-[10px] ${theme.textDim}`}>{t('idphoto.printLayout.rows')}</label>
                 <input
                   type="number"
                   value={rows}
@@ -148,7 +150,7 @@ export default function PrintLayoutPanel({ theme }: PrintLayoutPanelProps) {
                 />
               </div>
               <div>
-                <label className={`text-[10px] ${theme.textDim}`}>列数</label>
+                <label className={`text-[10px] ${theme.textDim}`}>{t('idphoto.printLayout.cols')}</label>
                 <input
                   type="number"
                   value={cols}
@@ -162,7 +164,7 @@ export default function PrintLayoutPanel({ theme }: PrintLayoutPanelProps) {
 
           {/* Spacing */}
           <div>
-            <p className={`text-xs font-semibold mb-2 ${theme.textDim}`}>间距: {spacingMm}mm</p>
+            <p className={`text-xs font-semibold mb-2 ${theme.textDim}`}>{t('idphoto.printLayout.spacing')}: {spacingMm}mm</p>
             <input
               type="range"
               min={0} max={10} step={0.5}
@@ -175,16 +177,16 @@ export default function PrintLayoutPanel({ theme }: PrintLayoutPanelProps) {
           {/* Info */}
           <div className={`rounded-lg p-3 ${theme.inputBg} space-y-1`}>
             <div className="flex justify-between text-xs">
-              <span className={theme.textDim}>纸张</span>
-              <span className={theme.text}>6×4英寸 (6寸)</span>
+              <span className={theme.textDim}>{t('idphoto.printLayout.paper')}</span>
+              <span className={theme.text}>{t('idphoto.printLayout.paperSize')}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className={theme.textDim}>分辨率</span>
+              <span className={theme.textDim}>{t('idphoto.printLayout.resolution')}</span>
               <span className={theme.text}>300 DPI</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className={theme.textDim}>排列</span>
-              <span className={theme.text}>{rows}行 × {cols}列 = {rows * cols}张</span>
+              <span className={theme.textDim}>{t('idphoto.printLayout.arrangement')}</span>
+              <span className={theme.text}>{t('idphoto.printLayout.arrangementValue', { rows, cols, total: rows * cols })}</span>
             </div>
           </div>
 
@@ -198,7 +200,7 @@ export default function PrintLayoutPanel({ theme }: PrintLayoutPanelProps) {
                 : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25'
               }`}
           >
-            {loading ? '生成中...' : '生成打印文件'}
+            {loading ? t('idphoto.printLayout.generating') : t('idphoto.printLayout.generate')}
           </button>
 
           {/* Result */}
@@ -206,13 +208,13 @@ export default function PrintLayoutPanel({ theme }: PrintLayoutPanelProps) {
             <div className={`rounded-lg p-3 ${printLayoutResult.success ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
               {printLayoutResult.success ? (
                 <div className="space-y-1">
-                  <p className="text-xs text-green-400 font-semibold">排版生成成功!</p>
+                  <p className="text-xs text-green-400 font-semibold">{t('idphoto.printLayout.success')}</p>
                   <p className={`text-[10px] ${theme.textDim}`}>
-                    共 {printLayoutResult.actualCount} 张
+                    {t('idphoto.printLayout.totalCount', { count: printLayoutResult.actualCount })}
                   </p>
                   {printLayoutResult.outputPath && (
                     <p className={`text-[10px] ${theme.textDim} truncate`} title={printLayoutResult.outputPath}>
-                      保存至: {printLayoutResult.outputPath}
+                      {t('idphoto.printLayout.savedTo')} {printLayoutResult.outputPath}
                     </p>
                   )}
                 </div>
@@ -230,7 +232,7 @@ export default function PrintLayoutPanel({ theme }: PrintLayoutPanelProps) {
           onClick={() => setPhase('done')}
           className={`px-4 py-2 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textMuted}`}
         >
-          返回
+          {t('idphoto.printLayout.back')}
         </button>
       </div>
     </div>

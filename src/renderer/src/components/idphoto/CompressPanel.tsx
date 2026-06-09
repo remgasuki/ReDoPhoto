@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useIdPhotoStore } from '../../stores/idphotoStore'
 import type { CompressResult } from '../../types/idphoto'
 import type { ThemeClasses } from '../../types/theme'
@@ -14,6 +15,7 @@ const QUICK_SIZES = [
 ]
 
 export default function CompressPanel({ theme }: CompressPanelProps) {
+  const { t } = useTranslation()
   const { outputPath, compressResult, setCompressResult } = useIdPhotoStore()
   const [targetKB, setTargetKB] = useState('200')
   const [loading, setLoading] = useState(false)
@@ -23,7 +25,7 @@ export default function CompressPanel({ theme }: CompressPanelProps) {
     if (!outputPath) return
     const target = parseInt(targetKB)
     if (isNaN(target) || target <= 0) {
-      setError('请输入有效的目标大小')
+      setError(t('idphoto.compress.invalidTarget'))
       return
     }
 
@@ -42,7 +44,7 @@ export default function CompressPanel({ theme }: CompressPanelProps) {
 
       setCompressResult(result)
     } catch (err) {
-      setError('压缩失败: ' + String(err))
+      setError(t('idphoto.compress.compressFailed') + ': ' + String(err))
     } finally {
       setLoading(false)
     }
@@ -50,11 +52,11 @@ export default function CompressPanel({ theme }: CompressPanelProps) {
 
   return (
     <div className={`rounded-xl p-4 ${theme.card} ${theme.border} border space-y-3`}>
-      <h3 className={`text-sm font-semibold ${theme.textMuted}`}>智能压缩</h3>
+      <h3 className={`text-sm font-semibold ${theme.textMuted}`}>{t('idphoto.compress.title')}</h3>
 
       {/* Quick size buttons */}
       <div className="flex gap-2 items-center">
-        <span className={`text-xs ${theme.textDim}`}>目标大小:</span>
+        <span className={`text-xs ${theme.textDim}`}>{t('idphoto.compress.targetSize')}</span>
         <div className="flex gap-1.5">
           {QUICK_SIZES.map((s) => (
             <button
@@ -98,9 +100,9 @@ export default function CompressPanel({ theme }: CompressPanelProps) {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            压缩中...
+            {t('idphoto.compress.compressing')}
           </span>
-        ) : '一键压缩'}
+        ) : t('idphoto.compress.compress')}
       </button>
 
       {/* Result */}
@@ -116,18 +118,19 @@ export default function CompressPanel({ theme }: CompressPanelProps) {
 }
 
 function CompressResultView({ result, theme }: { result: CompressResult; theme: ThemeClasses }) {
+  const { t } = useTranslation()
   return (
     <div className={`rounded-lg p-3 ${theme.inputBg} space-y-1.5`}>
       <div className="flex justify-between text-xs">
-        <span className={theme.textDim}>原始大小</span>
+        <span className={theme.textDim}>{t('idphoto.compress.originalSize')}</span>
         <span className={theme.text}>{result.originalSizeKB.toFixed(1)} KB</span>
       </div>
       <div className="flex justify-between text-xs">
-        <span className={theme.textDim}>压缩后</span>
+        <span className={theme.textDim}>{t('idphoto.compress.compressedSize')}</span>
         <span className="text-green-400 font-semibold">{result.actualSizeKB.toFixed(1)} KB</span>
       </div>
       <div className="flex justify-between text-xs">
-        <span className={theme.textDim}>压缩率</span>
+        <span className={theme.textDim}>{t('idphoto.compress.compressRate')}</span>
         <span className={theme.text}>
           {result.originalSizeKB > 0
             ? ((1 - result.actualSizeKB / result.originalSizeKB) * 100).toFixed(1)
@@ -135,12 +138,12 @@ function CompressResultView({ result, theme }: { result: CompressResult; theme: 
         </span>
       </div>
       <div className="flex justify-between text-xs">
-        <span className={theme.textDim}>JPEG质量</span>
+        <span className={theme.textDim}>{t('idphoto.compress.jpegQuality')}</span>
         <span className={theme.text}>{result.quality}</span>
       </div>
       {result.outputPath && (
         <p className={`text-[10px] ${theme.textDim} truncate`} title={result.outputPath}>
-          保存至: {result.outputPath}
+          {t('idphoto.compress.savedTo')} {result.outputPath}
         </p>
       )}
     </div>

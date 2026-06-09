@@ -28,7 +28,8 @@ const defaultSettings: AppSettings = {
     quality: 95
   },
   outputFolderSuffix: 'New',
-  themeColor: 'black'
+  themeColor: 'black',
+  language: 'zh-CN' as const
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({

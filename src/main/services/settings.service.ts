@@ -2,6 +2,8 @@ import Store from 'electron-store'
 
 export type ThemeColor = 'black' | 'white' | 'beige' | 'skyblue' | 'darkblue' | 'kleinblue' | 'gray'
 
+export type Language = 'zh-CN' | 'zh-TW' | 'en' | 'ja'
+
 export interface DedupConfig {
   hashMode: 'sha256' | 'phash' | 'both'
   phashThreshold: number
@@ -31,6 +33,7 @@ export interface AppSettings {
   idphoto: IdPhotoConfig
   outputFolderSuffix: string
   themeColor: ThemeColor
+  language: Language
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -53,7 +56,8 @@ const DEFAULT_SETTINGS: AppSettings = {
     quality: 95
   },
   outputFolderSuffix: 'New',
-  themeColor: 'black'
+  themeColor: 'black',
+  language: 'zh-CN'
 }
 
 // Old settings format for migration
@@ -63,6 +67,7 @@ interface OldAppSettings {
   outputMode: 'copy' | 'delete'
   outputFolderSuffix: string
   themeColor: ThemeColor
+  language?: Language
 }
 
 const store = new Store<{ settings: AppSettings | OldAppSettings }>({
@@ -87,7 +92,8 @@ function migrateSettings(old: OldAppSettings): AppSettings {
     orientation: { ...DEFAULT_SETTINGS.orientation },
     idphoto: { ...DEFAULT_SETTINGS.idphoto },
     outputFolderSuffix: old.outputFolderSuffix || 'New',
-    themeColor: old.themeColor || 'black'
+    themeColor: old.themeColor || 'black',
+    language: old.language || 'zh-CN'
   }
 }
 

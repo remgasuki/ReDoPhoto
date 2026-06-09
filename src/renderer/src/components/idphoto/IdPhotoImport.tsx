@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useIdPhotoStore } from '../../stores/idphotoStore'
 import type { IdPhotoMode } from '../../stores/idphotoStore'
+import { useDropZone } from '../../hooks/useDropZone'
 import { ID_PHOTO_SIZE_PRESETS, BG_COLOR_OPTIONS, GRADIENT_PRESETS, PRESET_CATEGORY_LABELS } from '../../types/idphoto'
 import type { IdPhotoSizePreset, BgColorOption, CustomSizeTemplate, GradientBg } from '../../types/idphoto'
 import type { ThemeClasses } from '../../types/theme'
@@ -17,6 +19,7 @@ interface IdPhotoImportProps {
 const RECOLOR_BG_OPTIONS = BG_COLOR_OPTIONS.filter((o) => o.key !== 'none')
 
 export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
+  const { t } = useTranslation()
   const {
     mode, sourcePath, sourceImageBase64, sourceWidth, sourceHeight,
     selectedPreset, selectedBgColor, error, customTemplates, useAIMatting, selectedGradient,
@@ -38,17 +41,26 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
     try {
       const path = await window.api.selectImage()
       if (!path) return
-      setSourcePath(path)
-      setError(null)
-      setRecoloredImageBase64(null)
-
-      const info = await window.api.getImageInfo(path)
-      const base64 = await window.api.getThumbnail(path, 800)
-      setSourceImage(base64, info.width, info.height)
+      await loadImage(path)
     } catch (err) {
-      setError('选择照片失败: ' + String(err))
+      setError(t('idphoto.selectPhotoError') + ': ' + String(err))
     }
   }
+
+  const loadImage = useCallback(async (path: string) => {
+    setSourcePath(path)
+    setError(null)
+    setRecoloredImageBase64(null)
+    const info = await window.api.getImageInfo(path)
+    const base64 = await window.api.getThumbnail(path, 800)
+    setSourceImage(base64, info.width, info.height)
+  }, [setSourcePath, setError, setRecoloredImageBase64, setSourceImage])
+
+  const { isDragActive, dropZoneProps } = useDropZone({
+    accept: 'image',
+    onDropImage: (path) => loadImage(path),
+    onError: (msg) => setError(msg)
+  })
 
   const handleStartCreatePreview = () => {
     if (!sourcePath || !selectedPreset || !sourceWidth || !sourceHeight) return
@@ -85,7 +97,7 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
       setRecoloredImageBase64(preview)
       setPhase('recolor_preview')
     } catch (err) {
-      setError('预览失败: ' + String(err))
+      setError(t('idphoto.previewFailed') + ': ' + String(err))
     } finally {
       setRecolorProcessing(false)
     }
@@ -100,7 +112,7 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
     const h = parseFloat(customHeightMm)
     const name = customName.trim()
     if (!name || isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
-      setError('请填写完整的自定义尺寸信息')
+      setError(t('idphoto.customSizeError'))
       return
     }
     const dpi = 300
@@ -131,22 +143,30 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
         {/* Mode tabs */}
         <div className="flex gap-1 p-1 rounded-lg bg-black/10">
           <ModeTab active={mode === 'create'} onClick={() => handleModeSwitch('create')} theme={theme}>
-            制作证件照
+            {t('idphoto.modeCreate')}
           </ModeTab>
           <ModeTab active={mode === 'recolor'} onClick={() => handleModeSwitch('recolor')} theme={theme}>
-            仅更换背景色
+            {t('idphoto.modeRecolor')}
           </ModeTab>
         </div>
 
         {/* Photo selection */}
         <div>
-          <h3 className={`text-sm font-semibold mb-3 ${theme.textMuted}`}>选择照片</h3>
+          <h3 className={`text-sm font-semibold mb-3 ${theme.textMuted}`}>{t('idphoto.selectPhoto')}</h3>
           <div
             className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer
-              ${theme.hoverBg} hover:border-blue-400`}
+              ${isDragActive ? 'border-blue-400 bg-blue-500/10 scale-[1.02]' : theme.hoverBg + ' hover:border-blue-400'}`}
             onClick={handleSelectImage}
+            {...dropZoneProps}
           >
-            {sourceImageBase64 ? (
+            {isDragActive ? (
+              <>
+                <svg className={`w-12 h-12 mx-auto mb-3 text-blue-400`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <p className={`text-sm text-blue-400`}>{t('import.dropImageHere')}</p>
+              </>
+            ) : sourceImageBase64 ? (
               <div className="flex items-center gap-4">
                 <img
                   src={sourceImageBase64}
@@ -160,7 +180,7 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
                   <p className={`text-xs mt-1 ${theme.textDim}`}>
                     {sourceWidth} × {sourceHeight} px
                   </p>
-                  <p className={`text-xs mt-1 text-blue-400`}>点击重新选择</p>
+                  <p className={`text-xs mt-1 text-blue-400`}>{t('idphoto.clickReselect')}</p>
                 </div>
               </div>
             ) : (
@@ -170,9 +190,9 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
                     d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 <p className={`text-sm ${theme.textMuted}`}>
-                  {mode === 'create' ? '点击选择一张照片' : '点击选择已有证件照'}
+                  {mode === 'create' ? t('idphoto.clickSelect') : t('idphoto.clickSelectRecolor')}
                 </p>
-                <p className={`text-xs mt-1 ${theme.textDim}`}>支持 JPG、PNG、BMP、WebP 格式</p>
+                <p className={`text-xs mt-1 ${theme.textDim}`}>{t('import.dragImageHint')}</p>
               </>
             )}
           </div>
@@ -182,7 +202,7 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
         {mode === 'create' && sourceImageBase64 && (
           <>
           <div>
-            <h3 className={`text-sm font-semibold mb-3 ${theme.textMuted}`}>选择证件照尺寸</h3>
+            <h3 className={`text-sm font-semibold mb-3 ${theme.textMuted}`}>{t('idphoto.selectSize')}</h3>
             <div className="space-y-4">
               {categories.map((cat) => {
                 if (cat === 'custom') {
@@ -201,7 +221,7 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
                   return (
                     <div key={cat}>
                       <p className={`text-xs font-medium mb-2 ${theme.textDim}`}>
-                        {PRESET_CATEGORY_LABELS[cat]}
+                        {t(`idphoto.categoryLabels.${cat}`)}
                       </p>
                       {customPresets.length > 0 && (
                         <div className="grid grid-cols-3 gap-2 mb-3">
@@ -230,20 +250,20 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
                       )}
                       {/* Custom template form */}
                       <div className={`rounded-lg p-3 ${theme.inputBg} space-y-2`}>
-                        <p className={`text-xs font-medium ${theme.textDim}`}>添加自定义尺寸</p>
+                        <p className={`text-xs font-medium ${theme.textDim}`}>{t('idphoto.addCustomSize')}</p>
                         <div className="flex gap-2 items-end">
                           <div className="flex-1">
-                            <label className={`text-[10px] ${theme.textDim}`}>名称</label>
+                            <label className={`text-[10px] ${theme.textDim}`}>{t('idphoto.name')}</label>
                             <input
                               type="text"
                               value={customName}
                               onChange={(e) => setCustomName(e.target.value)}
-                              placeholder="如：公司工牌"
+                              placeholder={t('idphoto.customNamePlaceholder')}
                               className={`w-full px-2 py-1.5 rounded text-xs ${theme.inputBg} ${theme.inputBorder} border ${theme.inputText} focus:outline-none focus:border-blue-500`}
                             />
                           </div>
                           <div className="w-16">
-                            <label className={`text-[10px] ${theme.textDim}`}>宽(mm)</label>
+                            <label className={`text-[10px] ${theme.textDim}`}>{t('idphoto.widthMm')}</label>
                             <input
                               type="number"
                               value={customWidthMm}
@@ -254,7 +274,7 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
                             />
                           </div>
                           <div className="w-16">
-                            <label className={`text-[10px] ${theme.textDim}`}>高(mm)</label>
+                            <label className={`text-[10px] ${theme.textDim}`}>{t('idphoto.heightMm')}</label>
                             <input
                               type="number"
                               value={customHeightMm}
@@ -268,7 +288,7 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
                             onClick={handleAddCustomTemplate}
                             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded transition-colors"
                           >
-                            添加
+                            {t('idphoto.add')}
                           </button>
                         </div>
                       </div>
@@ -281,7 +301,7 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
                 return (
                   <div key={cat}>
                     <p className={`text-xs font-medium mb-2 ${theme.textDim}`}>
-                      {PRESET_CATEGORY_LABELS[cat]}
+                      {t(`idphoto.categoryLabels.${cat}`)}
                     </p>
                     <div className="grid grid-cols-3 gap-2">
                       {presets.map((preset) => (
@@ -307,8 +327,8 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
           <div className={`rounded-xl p-4 ${theme.card} ${theme.border} border`}>
             <div className="flex items-center justify-between">
               <div>
-                <h3 className={`text-sm font-semibold ${theme.textMuted}`}>AI 智能抠图</h3>
-                <p className={`text-[10px] mt-0.5 ${theme.textDim}`}>使用 AI 模型精准识别人物，适用于复杂背景</p>
+                <h3 className={`text-sm font-semibold ${theme.textMuted}`}>{t('idphoto.aiMatting')}</h3>
+                <p className={`text-[10px] mt-0.5 ${theme.textDim}`}>{t('idphoto.aiMattingDesc')}</p>
               </div>
               <button
                 onClick={() => setUseAIMatting(!useAIMatting)}
@@ -325,7 +345,7 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
         {sourceImageBase64 && (mode === 'create' ? selectedPreset : true) && (
           <div>
             <h3 className={`text-sm font-semibold mb-3 ${theme.textMuted}`}>
-              {mode === 'create' ? '背景颜色' : '选择目标背景色'}
+              {mode === 'create' ? t('idphoto.bgColor') : t('idphoto.bgColorTarget')}
             </h3>
             <div className="flex gap-3 flex-wrap">
               {(mode === 'create' ? BG_COLOR_OPTIONS : RECOLOR_BG_OPTIONS).map((opt) => (
@@ -358,7 +378,7 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
                   </div>
-                  <span className={`text-[10px] ${showCustomColor ? 'text-blue-400' : theme.textDim}`}>自定义</span>
+                  <span className={`text-[10px] ${showCustomColor ? 'text-blue-400' : theme.textDim}`}>{t('idphoto.custom')}</span>
                 </button>
               )}
               {/* Gradient button */}
@@ -372,7 +392,7 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
                     ${showGradient ? 'ring-2 ring-blue-500' : theme.hoverBg}`}
                 >
                   <div className="w-8 h-8 rounded-full border-2 border-white/30 shadow-inner bg-gradient-to-b from-blue-400 to-purple-600" />
-                  <span className={`text-[10px] ${showGradient ? 'text-blue-400' : theme.textDim}`}>渐变</span>
+                  <span className={`text-[10px] ${showGradient ? 'text-blue-400' : theme.textDim}`}>{t('idphoto.gradient')}</span>
                 </button>
               )}
             </div>
@@ -413,7 +433,7 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
 
             {mode === 'recolor' && (
               <p className={`text-xs mt-2 ${theme.textDim}`}>
-                系统将自动识别原照片背景色并替换为所选颜色
+                {t('idphoto.recolorHint')}
               </p>
             )}
           </div>
@@ -437,7 +457,7 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
             onClick={handleStartCreatePreview}
             className="w-full py-3 rounded-lg text-white font-semibold transition-all bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/25"
           >
-            预览裁剪
+            {t('idphoto.previewCrop')}
           </button>
         )}
 
@@ -457,9 +477,9 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                正在生成预览...
+                {t('idphoto.generatingPreview')}
               </span>
-            ) : '预览效果'}
+            ) : t('idphoto.previewEffect')}
           </button>
         )}
       </div>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useOrientationStore } from '../../stores/orientationStore'
 import type { ThemeClasses } from '../../types/theme'
 
@@ -6,6 +7,7 @@ interface OrientationPreviewProps {
 }
 
 export default function OrientationPreview({ theme }: OrientationPreviewProps) {
+  const { t } = useTranslation()
   const { orientationInfos, selectedIds, toggleSelection, selectAll, setPhase } = useOrientationStore()
 
   const needsFixCount = orientationInfos.filter((i) => i.needsFix).length
@@ -19,11 +21,11 @@ export default function OrientationPreview({ theme }: OrientationPreviewProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h2 className={`text-lg font-semibold ${theme.text}`}>
-              方向信息扫描结果 ({orientationInfos.length} 个文件)
+              {t('orientation.title')} {t('orientation.fileCount', { count: orientationInfos.length })}
             </h2>
             <div className="flex gap-2 text-xs">
-              <span className="bg-amber-500/20 text-amber-400 px-2 py-1 rounded">需要修复 {needsFixCount}</span>
-              <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded">正常 {orientationInfos.length - needsFixCount}</span>
+              <span className="bg-amber-500/20 text-amber-400 px-2 py-1 rounded">{t('orientation.needsFix', { count: needsFixCount })}</span>
+              <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded">{t('orientation.normal', { count: orientationInfos.length - needsFixCount })}</span>
             </div>
           </div>
           <div className="flex gap-2">
@@ -32,7 +34,7 @@ export default function OrientationPreview({ theme }: OrientationPreviewProps) {
               disabled={needsFixCount === 0}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textMuted}`}
             >
-              {allSelected ? '取消全选' : '全选需修复'}
+              {allSelected ? t('orientation.deselectAll') : t('orientation.selectAll')}
             </button>
           </div>
         </div>
@@ -65,7 +67,7 @@ export default function OrientationPreview({ theme }: OrientationPreviewProps) {
             </div>
             <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full
               ${info.needsFix ? 'bg-amber-500/20 text-amber-400' : 'bg-green-500/20 text-green-400'}`}>
-              {info.needsFix ? '需修复' : '正常'}
+              {info.needsFix ? t('orientation.needsFixBadge') : t('orientation.normalBadge')}
             </span>
           </div>
         ))}
@@ -77,7 +79,7 @@ export default function OrientationPreview({ theme }: OrientationPreviewProps) {
           onClick={() => useOrientationStore.getState().reset()}
           className={`px-4 py-2 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textMuted}`}
         >
-          重新开始
+          {t('orientation.restart')}
         </button>
         <button
           onClick={() => setPhase('executing')}
@@ -88,7 +90,7 @@ export default function OrientationPreview({ theme }: OrientationPreviewProps) {
               : `bg-gray-500 opacity-50 cursor-not-allowed ${theme.textDim}`
             }`}
         >
-          修复选中项 ({selectedCount})
+          {t('orientation.fixSelected', { count: selectedCount })}
         </button>
       </div>
     </div>

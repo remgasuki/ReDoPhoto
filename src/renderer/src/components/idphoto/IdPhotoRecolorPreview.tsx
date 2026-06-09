@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useIdPhotoStore } from '../../stores/idphotoStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import type { ThemeClasses } from '../../types/theme'
@@ -7,6 +8,7 @@ interface IdPhotoRecolorPreviewProps {
 }
 
 export default function IdPhotoRecolorPreview({ theme }: IdPhotoRecolorPreviewProps) {
+  const { t } = useTranslation()
   const {
     sourceImageBase64, recoloredImageBase64,
     selectedBgColor, sourcePath, useAIMatting,
@@ -48,11 +50,11 @@ export default function IdPhotoRecolorPreview({ theme }: IdPhotoRecolorPreviewPr
       if (result.success) {
         setPhase('done')
       } else {
-        setError(result.error || '处理失败')
+        setError(result.error || t('idphoto.processFailed'))
         setPhase('done')
       }
     } catch (err) {
-      setError('处理失败: ' + String(err))
+      setError(t('idphoto.processFailed') + ': ' + String(err))
       setPhase('import')
     }
   }
@@ -62,10 +64,10 @@ export default function IdPhotoRecolorPreview({ theme }: IdPhotoRecolorPreviewPr
       {/* Top bar */}
       <div className={`shrink-0 border-b px-4 py-3 transition-colors ${theme.card} ${theme.border}`}>
         <div className="flex items-center justify-between">
-          <h2 className={`text-lg font-semibold ${theme.text}`}>背景色替换预览</h2>
+          <h2 className={`text-lg font-semibold ${theme.text}`}>{t('idphoto.recolorPreviewTitle')}</h2>
           <div className="flex gap-2 text-xs">
             <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
-              目标: {selectedBgColor.label}
+              {t('idphoto.targetColor')}: {selectedBgColor.label}
             </span>
           </div>
         </div>
@@ -75,12 +77,12 @@ export default function IdPhotoRecolorPreview({ theme }: IdPhotoRecolorPreviewPr
       <div className="flex-1 flex items-center justify-center gap-8 p-6 overflow-auto">
         {/* Original */}
         <div className="flex flex-col items-center gap-3">
-          <p className={`text-sm font-medium ${theme.textMuted}`}>原始照片</p>
+          <p className={`text-sm font-medium ${theme.textMuted}`}>{t('idphoto.originalPhoto')}</p>
           {sourceImageBase64 && (
             <div className={`rounded-xl overflow-hidden shadow-lg border-2 ${theme.border}`}>
               <img
                 src={sourceImageBase64}
-                alt="原始照片"
+                alt={t('idphoto.originalPhoto')}
                 className="max-h-72 max-w-56 object-contain"
               />
             </div>
@@ -96,12 +98,12 @@ export default function IdPhotoRecolorPreview({ theme }: IdPhotoRecolorPreviewPr
 
         {/* Recolored */}
         <div className="flex flex-col items-center gap-3">
-          <p className={`text-sm font-medium ${theme.textMuted}`}>替换效果</p>
+          <p className={`text-sm font-medium ${theme.textMuted}`}>{t('idphoto.resultEffect')}</p>
           {recoloredImageBase64 && (
             <div className="rounded-xl overflow-hidden shadow-lg border-2 border-blue-500/30">
               <img
                 src={recoloredImageBase64}
-                alt="替换后效果"
+                alt={t('idphoto.resultEffect')}
                 className="max-h-72 max-w-56 object-contain"
               />
             </div>
@@ -111,7 +113,7 @@ export default function IdPhotoRecolorPreview({ theme }: IdPhotoRecolorPreviewPr
 
       {/* Info */}
       <div className={`px-6 py-2 text-center ${theme.textDim} text-xs`}>
-        <p>基于颜色相似度检测自动替换背景区域，边缘有柔和过渡处理</p>
+        <p>{t('idphoto.recolorInfo')}</p>
       </div>
 
       {/* Bottom bar */}
@@ -120,13 +122,13 @@ export default function IdPhotoRecolorPreview({ theme }: IdPhotoRecolorPreviewPr
           onClick={() => setPhase('import')}
           className={`px-4 py-2 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textMuted}`}
         >
-          返回
+          {t('idphoto.back')}
         </button>
         <button
           onClick={handleSave}
           className="px-6 py-2 rounded-lg text-sm font-semibold transition-all bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25"
         >
-          选择保存位置并生成
+          {t('idphoto.saveAndGenerate')}
         </button>
       </div>
     </div>

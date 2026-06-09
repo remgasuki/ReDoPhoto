@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useIdPhotoStore } from '../../stores/idphotoStore'
 import type { ThemeClasses } from '../../types/theme'
 import CompressPanel from './CompressPanel'
@@ -8,6 +9,7 @@ interface IdPhotoExecuteProps {
 }
 
 export default function IdPhotoExecute({ theme }: IdPhotoExecuteProps) {
+  const { t } = useTranslation()
   const { phase, mode, result, outputPath, selectedPreset, selectedBgColor } = useIdPhotoStore()
   const [outputThumbnail, setOutputThumbnail] = useState<string | null>(null)
 
@@ -26,14 +28,14 @@ export default function IdPhotoExecute({ theme }: IdPhotoExecuteProps) {
           <div className={`rounded-xl p-8 transition-colors ${theme.card}`}>
             <div className="text-5xl mb-4">⚙️</div>
             <h2 className={`text-xl font-semibold mb-2 ${theme.text}`}>
-              {isRecolor ? '正在替换背景色...' : '正在生成证件照...'}
+              {isRecolor ? t('idphoto.executing_recolor') : t('idphoto.executing_create')}
             </h2>
             <div className={`flex items-center justify-center gap-2 ${theme.textDim}`}>
               <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              <span>处理中...</span>
+              <span>{t('idphoto.processing')}</span>
             </div>
           </div>
         </div>
@@ -52,7 +54,7 @@ export default function IdPhotoExecute({ theme }: IdPhotoExecuteProps) {
             <>
               <div className="text-5xl mb-4">✅</div>
               <h2 className="text-xl font-semibold text-green-400 mb-2">
-                {isRecolor ? '背景色替换完成！' : '证件照生成完成！'}
+                {isRecolor ? t('idphoto.successRecolor') : t('idphoto.successCreate')}
               </h2>
 
               {outputThumbnail && (
@@ -68,17 +70,17 @@ export default function IdPhotoExecute({ theme }: IdPhotoExecuteProps) {
               {isRecolor ? (
                 <div className={`space-y-1 text-sm mb-4 ${theme.textDim}`}>
                   <p>
-                    背景色: <span className={theme.text}>{selectedBgColor.label}</span>
+                    {t('idphoto.bgColorLabel')}: <span className={theme.text}>{selectedBgColor.label}</span>
                   </p>
                 </div>
               ) : (
                 selectedPreset && (
                   <div className={`space-y-1 text-sm mb-4 ${theme.textDim}`}>
                     <p>
-                      尺寸: <span className={theme.text}>{selectedPreset.label}</span>
+                      {t('idphoto.size')}: <span className={theme.text}>{selectedPreset.label}</span>
                     </p>
                     <p>
-                      像素: <span className={theme.text}>{selectedPreset.widthPx} × {selectedPreset.heightPx}</span>
+                      {t('idphoto.pixels')}: <span className={theme.text}>{selectedPreset.widthPx} × {selectedPreset.heightPx}</span>
                     </p>
                     <p>
                       DPI: <span className={theme.text}>{selectedPreset.dpi}</span>
@@ -89,7 +91,7 @@ export default function IdPhotoExecute({ theme }: IdPhotoExecuteProps) {
 
               {outputPath && (
                 <p className={`text-xs mb-6 ${theme.textDim} truncate`} title={outputPath}>
-                  保存至: {outputPath}
+                  {t('idphoto.savedTo', { path: outputPath })}
                 </p>
               )}
 
@@ -99,7 +101,7 @@ export default function IdPhotoExecute({ theme }: IdPhotoExecuteProps) {
                   onClick={() => useIdPhotoStore.getState().setPhase('print_layout')}
                   className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-semibold transition-colors"
                 >
-                  制作6寸打印排版
+                  {t('idphoto.makePrintLayout')}
                 </button>
               </div>
 
@@ -110,10 +112,10 @@ export default function IdPhotoExecute({ theme }: IdPhotoExecuteProps) {
             <>
               <div className="text-5xl mb-4">❌</div>
               <h2 className="text-xl font-semibold text-red-400 mb-2">
-                {isRecolor ? '背景色替换失败' : '生成失败'}
+                {isRecolor ? t('idphoto.failRecolor') : t('idphoto.failCreate')}
               </h2>
               <p className="text-sm text-red-300 mb-6">
-                {result?.error || '未知错误'}
+                {result?.error || t('idphoto.processFailed')}
               </p>
             </>
           )}
@@ -122,7 +124,7 @@ export default function IdPhotoExecute({ theme }: IdPhotoExecuteProps) {
             onClick={() => useIdPhotoStore.getState().reset()}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-colors"
           >
-            {isRecolor ? '处理新的照片' : '制作新的证件照'}
+            {isRecolor ? t('idphoto.newRecolor') : t('idphoto.newIdPhoto')}
           </button>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useOrientationStore } from '../../stores/orientationStore'
 import OrientationImport from './OrientationImport'
 import OrientationPreview from './OrientationPreview'
@@ -9,6 +10,7 @@ interface OrientationFeatureProps {
 }
 
 export default function OrientationFeature({ theme }: OrientationFeatureProps) {
+  const { t } = useTranslation()
   const phase = useOrientationStore((s) => s.phase)
 
   return (
@@ -21,7 +23,7 @@ export default function OrientationFeature({ theme }: OrientationFeatureProps) {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            <p>正在扫描方向信息...</p>
+            <p>{t('orientation.scanning')}</p>
           </div>
         </div>
       )}

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useRenameStore } from '../../stores/renameStore'
 import type { ThemeClasses } from '../../types/theme'
 
@@ -6,6 +7,7 @@ interface RenamePreviewProps {
 }
 
 export default function RenamePreview({ theme }: RenamePreviewProps) {
+  const { t } = useTranslation()
   const { previews, updatePreviewName, togglePreviewSelection, selectAll, setPhase } = useRenameStore()
   const selectedCount = previews.filter((p) => p.selected).length
 
@@ -18,10 +20,10 @@ export default function RenamePreview({ theme }: RenamePreviewProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h2 className={`text-lg font-semibold ${theme.text}`}>
-              预览重命名结果 ({previews.length} 个文件)
+              {t('rename.title')} {t('rename.fileCount', { count: previews.length })}
             </h2>
             <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs">
-              已选择 {selectedCount}
+              {t('rename.selectedCount', { count: selectedCount })}
             </span>
           </div>
           <div className="flex gap-2">
@@ -29,7 +31,7 @@ export default function RenamePreview({ theme }: RenamePreviewProps) {
               onClick={() => selectAll(!allSelected)}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textMuted}`}
             >
-              {allSelected ? '取消全选' : '全选'}
+              {allSelected ? t('rename.deselectAll') : t('rename.selectAll')}
             </button>
           </div>
         </div>
@@ -41,11 +43,11 @@ export default function RenamePreview({ theme }: RenamePreviewProps) {
           <thead>
             <tr className={`border-b ${theme.border}`}>
               <th className={`text-left py-2 px-3 w-10 ${theme.textDim}`}></th>
-              <th className={`text-left py-2 px-3 ${theme.textDim}`}>原文件名</th>
+              <th className={`text-left py-2 px-3 ${theme.textDim}`}>{t('rename.originalName')}</th>
               <th className={`text-left py-2 px-3 w-8 ${theme.textDim}`}></th>
-              <th className={`text-left py-2 px-3 ${theme.textDim}`}>新文件名</th>
-              <th className={`text-left py-2 px-3 ${theme.textDim}`}>日期</th>
-              <th className={`text-left py-2 px-3 ${theme.textDim}`}>地点</th>
+              <th className={`text-left py-2 px-3 ${theme.textDim}`}>{t('rename.newName')}</th>
+              <th className={`text-left py-2 px-3 ${theme.textDim}`}>{t('rename.date')}</th>
+              <th className={`text-left py-2 px-3 ${theme.textDim}`}>{t('rename.location')}</th>
             </tr>
           </thead>
           <tbody>
@@ -97,7 +99,7 @@ export default function RenamePreview({ theme }: RenamePreviewProps) {
           onClick={() => useRenameStore.getState().reset()}
           className={`px-4 py-2 text-sm rounded-lg transition-colors ${theme.border.replace('border-', 'bg-')} ${theme.hoverBg} ${theme.textMuted}`}
         >
-          重新开始
+          {t('rename.restart')}
         </button>
         <button
           onClick={() => setPhase('executing')}
@@ -108,7 +110,7 @@ export default function RenamePreview({ theme }: RenamePreviewProps) {
               : `bg-gray-500 opacity-50 cursor-not-allowed ${theme.textDim}`
             }`}
         >
-          执行重命名 ({selectedCount})
+          {t('rename.executeRename', { count: selectedCount })}
         </button>
       </div>
     </div>

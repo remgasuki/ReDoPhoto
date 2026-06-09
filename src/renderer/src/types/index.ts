@@ -38,6 +38,8 @@ export interface DedupSettings {
 // Nested settings types
 export type ThemeColor = 'black' | 'white' | 'beige' | 'skyblue' | 'darkblue' | 'kleinblue' | 'gray'
 
+export type Language = 'zh-CN' | 'zh-TW' | 'en' | 'ja'
+
 export interface DedupConfig {
   hashMode: 'sha256' | 'phash' | 'both'
   phashThreshold: number
@@ -67,6 +69,7 @@ export interface AppSettings {
   idphoto: IdPhotoConfig
   outputFolderSuffix: string
   themeColor: ThemeColor
+  language: Language
 }
 
 export interface ScanProgress {

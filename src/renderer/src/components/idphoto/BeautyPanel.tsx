@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useIdPhotoStore } from '../../stores/idphotoStore'
 import type { BeautyParams } from '../../types/idphoto'
 import type { ThemeClasses } from '../../types/theme'
@@ -8,6 +9,7 @@ interface BeautyPanelProps {
 }
 
 export default function BeautyPanel({ theme }: BeautyPanelProps) {
+  const { t } = useTranslation()
   const {
     sourcePath, beautyParams, setBeautyParams, setBeautyPreviewBase64
   } = useIdPhotoStore()
@@ -45,13 +47,13 @@ export default function BeautyPanel({ theme }: BeautyPanelProps) {
   return (
     <div className={`rounded-xl p-4 ${theme.card} ${theme.border} border space-y-3`}>
       <div className="flex items-center justify-between">
-        <h3 className={`text-sm font-semibold ${theme.textMuted}`}>美颜微调</h3>
+        <h3 className={`text-sm font-semibold ${theme.textMuted}`}>{t('idphoto.beauty.title')}</h3>
         <div className="flex gap-2">
           <button
             onClick={handleReset}
             className={`text-xs px-2 py-1 rounded ${theme.hoverBg} ${theme.textDim} transition-colors`}
           >
-            重置
+            {t('idphoto.beauty.reset')}
           </button>
           <button
             onClick={handlePreview}
@@ -62,7 +64,7 @@ export default function BeautyPanel({ theme }: BeautyPanelProps) {
                 : 'bg-blue-600 hover:bg-blue-500 text-white'
               }`}
           >
-            {loading ? '处理中...' : '预览效果'}
+            {loading ? t('idphoto.beauty.processing') : t('idphoto.beauty.preview')}
           </button>
         </div>
       </div>
@@ -70,21 +72,21 @@ export default function BeautyPanel({ theme }: BeautyPanelProps) {
       {/* Sliders */}
       <div className="space-y-2">
         <SliderRow
-          label="磨皮"
+          label={t('idphoto.beauty.smooth')}
           value={localParams.smooth}
           min={0} max={100} step={1}
           onChange={(v) => setLocalParams({ ...localParams, smooth: v })}
           theme={theme}
         />
         <SliderRow
-          label="亮度"
+          label={t('idphoto.beauty.brightness')}
           value={localParams.brightness}
           min={-50} max={50} step={1}
           onChange={(v) => setLocalParams({ ...localParams, brightness: v })}
           theme={theme}
         />
         <SliderRow
-          label="对比度"
+          label={t('idphoto.beauty.contrast')}
           value={localParams.contrast}
           min={-50} max={50} step={1}
           onChange={(v) => setLocalParams({ ...localParams, contrast: v })}
@@ -104,7 +106,7 @@ export default function BeautyPanel({ theme }: BeautyPanelProps) {
       )}
 
       <p className={`text-[10px] ${theme.textDim}`}>
-        轻微调整即可，过度美颜可能导致面部失真
+        {t('idphoto.beauty.hint')}
       </p>
     </div>
   )

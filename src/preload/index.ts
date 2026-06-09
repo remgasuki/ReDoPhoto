@@ -40,6 +40,8 @@ export interface DedupSettings {
 // New nested settings types
 export type ThemeColor = 'black' | 'white' | 'beige' | 'skyblue' | 'darkblue' | 'kleinblue' | 'gray'
 
+export type Language = 'zh-CN' | 'zh-TW' | 'en' | 'ja'
+
 export interface DedupConfig {
   hashMode: 'sha256' | 'phash' | 'both'
   phashThreshold: number
@@ -69,6 +71,7 @@ export interface AppSettings {
   idphoto: IdPhotoConfig
   outputFolderSuffix: string
   themeColor: ThemeColor
+  language: Language
 }
 
 // DeepPartial for partial settings updates
@@ -359,7 +362,11 @@ const api = {
     ipcRenderer.invoke('idphoto:printLayout', { params }),
 
   getPrintLayoutPreview: (photoPath: string, rows: number, cols: number, spacingMm: number): Promise<string> =>
-    ipcRenderer.invoke('idphoto:printLayoutPreview', { photoPath, rows, cols, spacingMm })
+    ipcRenderer.invoke('idphoto:printLayoutPreview', { photoPath, rows, cols, spacingMm }),
+
+  // Path validation for drag & drop
+  validatePaths: (paths: string[]): Promise<Array<{ path: string; type: 'file' | 'directory' | 'invalid'; isImage: boolean }>> =>
+    ipcRenderer.invoke('path:validate', { paths })
 }
 
 contextBridge.exposeInMainWorld('api', api)

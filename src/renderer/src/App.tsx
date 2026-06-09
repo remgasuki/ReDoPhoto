@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSettingsStore } from './stores/settingsStore'
 import { useNavStore } from './stores/navStore'
 import { getThemeClasses } from './types/theme'
+import i18n from './i18n'
 import TitleBar from './components/TitleBar'
 import Sidebar from './components/Sidebar'
 import SettingsPanel from './components/SettingsPanel'
@@ -13,12 +14,35 @@ import IdPhotoFeature from './components/idphoto/IdPhotoFeature'
 export default function App() {
   const loadSettings = useSettingsStore((s) => s.loadSettings)
   const themeColor = useSettingsStore((s) => s.settings.themeColor)
+  const language = useSettingsStore((s) => s.settings.language)
+  const loaded = useSettingsStore((s) => s.loaded)
   const activeFeature = useNavStore((s) => s.activeFeature)
   const [showSettings, setShowSettings] = useState(false)
 
   useEffect(() => {
     loadSettings()
   }, [loadSettings])
+
+  // Sync language with i18n
+  useEffect(() => {
+    if (loaded && language) {
+      i18n.changeLanguage(language)
+    }
+  }, [language, loaded])
+
+  // Prevent default drag behavior (Electron navigates to dropped files)
+  useEffect(() => {
+    const preventDefaultDrag = (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    document.addEventListener('dragover', preventDefaultDrag)
+    document.addEventListener('drop', preventDefaultDrag)
+    return () => {
+      document.removeEventListener('dragover', preventDefaultDrag)
+      document.removeEventListener('drop', preventDefaultDrag)
+    }
+  }, [])
 
   const theme = getThemeClasses(themeColor)
 
