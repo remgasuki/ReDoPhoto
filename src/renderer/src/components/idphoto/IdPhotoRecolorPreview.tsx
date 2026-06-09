@@ -9,7 +9,7 @@ interface IdPhotoRecolorPreviewProps {
 export default function IdPhotoRecolorPreview({ theme }: IdPhotoRecolorPreviewProps) {
   const {
     sourceImageBase64, recoloredImageBase64,
-    selectedBgColor, sourcePath,
+    selectedBgColor, sourcePath, useAIMatting,
     setPhase, setOutputPath, setResult, setError
   } = useIdPhotoStore()
   const settings = useSettingsStore((s) => s.settings)
@@ -26,14 +26,23 @@ export default function IdPhotoRecolorPreview({ theme }: IdPhotoRecolorPreviewPr
       setOutputPath(outputPath)
       setPhase('executing')
 
-      const result = await window.api.recolorIdPhoto({
-        sourcePath,
-        outputPath,
-        targetBgColor: selectedBgColor.colorValue,
-        tolerance: 60,
-        outputFormat: settings.idphoto.outputFormat,
-        quality: settings.idphoto.quality
-      })
+      const result = useAIMatting
+        ? await window.api.recolorIdPhotoAI({
+            sourcePath,
+            outputPath,
+            targetBgColor: selectedBgColor.colorValue,
+            tolerance: 60,
+            outputFormat: settings.idphoto.outputFormat,
+            quality: settings.idphoto.quality
+          })
+        : await window.api.recolorIdPhoto({
+            sourcePath,
+            outputPath,
+            targetBgColor: selectedBgColor.colorValue,
+            tolerance: 60,
+            outputFormat: settings.idphoto.outputFormat,
+            quality: settings.idphoto.quality
+          })
 
       setResult(result)
       if (result.success) {

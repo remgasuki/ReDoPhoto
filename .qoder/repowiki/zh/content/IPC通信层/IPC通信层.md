@@ -1,7 +1,7 @@
 # IPC通信层
 
 <cite>
-**本文引用的文件**
+**本文档引用的文件**
 - [src/preload/index.ts](file://src/preload/index.ts)
 - [src/preload/index.d.ts](file://src/preload/index.d.ts)
 - [src/main/ipc/index.ts](file://src/main/ipc/index.ts)
@@ -12,18 +12,26 @@
 - [src/main/services/settings.service.ts](file://src/main/services/settings.service.ts)
 - [src/main/services/rename.service.ts](file://src/main/services/rename.service.ts)
 - [src/main/services/orientation.service.ts](file://src/main/services/orientation.service.ts)
+- [src/main/services/idphoto.service.ts](file://src/main/services/idphoto.service.ts)
 - [src/renderer/src/components/ScanningStep.tsx](file://src/renderer/src/components/ScanningStep.tsx)
 - [src/renderer/src/components/CompareStep.tsx](file://src/renderer/src/components/CompareStep.tsx)
 - [src/renderer/src/stores/dedupStore.ts](file://src/renderer/src/stores/dedupStore.ts)
 - [src/renderer/src/stores/settingsStore.ts](file://src/renderer/src/stores/settingsStore.ts)
+- [src/renderer/src/stores/idphotoStore.ts](file://src/renderer/src/stores/idphotoStore.ts)
+- [src/renderer/src/types/idphoto.ts](file://src/renderer/src/types/idphoto.ts)
+- [src/renderer/src/components/idphoto/IdPhotoFeature.tsx](file://src/renderer/src/components/idphoto/IdPhotoFeature.tsx)
+- [src/renderer/src/components/idphoto/IdPhotoExecute.tsx](file://src/renderer/src/components/idphoto/IdPhotoExecute.tsx)
+- [src/renderer/src/components/idphoto/IdPhotoImport.tsx](file://src/renderer/src/components/idphoto/IdPhotoImport.tsx)
+- [src/renderer/src/components/idphoto/IdPhotoPreview.tsx](file://src/renderer/src/components/idphoto/IdPhotoPreview.tsx)
+- [src/renderer/src/components/idphoto/IdPhotoRecolorPreview.tsx](file://src/renderer/src/components/idphoto/IdPhotoRecolorPreview.tsx)
 </cite>
 
 ## 更新摘要
 **所做更改**
-- 新增重命名功能模块的IPC处理器和进度监听机制
-- 新增照片方向修正功能模块的IPC处理器和进度监听机制
-- 扩展设置系统的配置结构，支持多模块配置管理
-- 更新预加载API，增加新的功能模块接口
+- 新增ID照片功能模块的IPC处理器和进度监听机制
+- 新增ID照片处理服务，支持证件照生成、背景替换和颜色预览
+- 扩展预加载API，增加ID照片操作接口
+- 更新设置系统，支持ID照片配置管理
 - 完善进度事件的统一管理和错误状态传播
 
 ## 目录
@@ -43,6 +51,7 @@
 - 预加载脚本的设计原理与contextBridge安全机制
 - IPC处理器接口定义与调用协议
 - 文件扫描、哈希计算、感知哈希与去重处理的完整通信流程
+- **新增ID照片功能模块**（证件照生成、背景替换、颜色预览）
 - **新增重命名功能模块**（EXIF信息提取、地理位置反向地理编码、批量重命名预览与执行）
 - **新增照片方向修正功能模块**（EXIF方向信息检测、自动旋转修正）
 - 进度监听机制（实时进度与错误状态传播）
@@ -55,13 +64,13 @@ IPC通信层由四部分组成：
 - 预加载脚本（Preload）：通过contextBridge将受限的Electron API暴露给渲染进程
 - 主进程（Main）：注册IPC处理器，协调服务层与UI交互
 - 渲染进程（Renderer）：通过window.api调用主进程能力，并订阅进度事件
-- **服务层扩展**：新增重命名服务和方向修正服务
+- **服务层扩展**：新增ID照片服务、重命名服务和方向修正服务
 
 ```mermaid
 graph TB
 subgraph "渲染进程"
-R_UI["React 组件<br/>ScanningStep.tsx / CompareStep.tsx<br/>Rename组件 / Orientation组件"]
-R_STORE["Zustand 状态管理<br/>dedupStore.ts / settingsStore.ts<br/>renameStore.ts / orientationStore.ts"]
+R_UI["React 组件<br/>ScanningStep.tsx / CompareStep.tsx<br/>IDPhoto组件 / Rename组件 / Orientation组件"]
+R_STORE["Zustand 状态管理<br/>dedupStore.ts / settingsStore.ts<br/>idphotoStore.ts / renameStore.ts / orientationStore.ts"]
 R_API["window.api 接口<br/>preload/index.ts"]
 end
 subgraph "预加载脚本"
@@ -74,6 +83,7 @@ S_SCAN["扫描服务<br/>scanner.service.ts"]
 S_HASH["哈希服务<br/>hash.service.ts"]
 S_DEDUP["去重服务<br/>dedup.service.ts"]
 S_SET["设置服务<br/>settings.service.ts"]
+S_IDPHOTO["ID照片服务<br/>idphoto.service.ts"]
 S_RENAME["重命名服务<br/>rename.service.ts"]
 S_ORIENT["方向修正服务<br/>orientation.service.ts"]
 end
@@ -86,6 +96,7 @@ M_IPC --> S_SCAN
 M_IPC --> S_HASH
 M_IPC --> S_DEDUP
 M_IPC --> S_SET
+M_IPC --> S_IDPHOTO
 M_IPC --> S_RENAME
 M_IPC --> S_ORIENT
 ```
@@ -93,6 +104,7 @@ M_IPC --> S_ORIENT
 **图表来源**
 - [src/preload/index.ts:131-227](file://src/preload/index.ts#L131-L227)
 - [src/main/ipc/index.ts:37-308](file://src/main/ipc/index.ts#L37-L308)
+- [src/main/services/idphoto.service.ts:1-200](file://src/main/services/idphoto.service.ts#L1-L200)
 - [src/main/services/rename.service.ts:41-102](file://src/main/services/rename.service.ts#L41-L102)
 - [src/main/services/orientation.service.ts:33-77](file://src/main/services/orientation.service.ts#L33-L77)
 
@@ -105,21 +117,25 @@ M_IPC --> S_ORIENT
 - 预加载脚本（preload/index.ts）
   - 使用contextBridge.exposeInMainWorld将受控API暴露到window.api
   - 提供窗口控制、文件夹选择与扫描、哈希计算、感知哈希、去重、缩略图生成、设置读取与写入等方法
+  - **新增ID照片功能API**：processIdPhoto、recolorIdPhoto、recolorIdPhotoPreview
   - **新增重命名功能API**：scanExif、previewRename、executeRename
   - **新增方向修正功能API**：scanOrientations、fixOrientations
-  - 提供扫描、哈希、去重、重命名、方向修正五类进度监听回调
+  - 提供扫描、哈希、去重、ID照片、重命名、方向修正六类进度监听回调
 - 主进程IPC处理器（main/ipc/index.ts）
   - 注册窗口控制、文件夹选择、文件扫描、哈希计算、感知哈希、去重分组与执行、缩略图生成、设置读取与写入
+  - **新增ID照片功能处理器**：idphoto:process、idphoto:recolor、idphoto:recolorPreview
   - **新增重命名功能处理器**：rename:scanExif、rename:preview、rename:execute
   - **新增方向修正功能处理器**：orientation:scan、orientation:fix
   - 将进度事件通过webContents.send发送至渲染进程
 - 服务层扩展
+  - **ID照片服务**：证件照生成、背景替换、颜色预览、尺寸预设管理
   - **重命名服务**：EXIF信息提取（日期、GPS坐标）、地理位置反向地理编码、批量重命名预览、重命名执行
   - **方向修正服务**：EXIF方向信息检测、自动旋转修正、原地修复与复制修复模式
 
 **章节来源**
 - [src/preload/index.ts:131-227](file://src/preload/index.ts#L131-L227)
 - [src/main/ipc/index.ts:37-308](file://src/main/ipc/index.ts#L37-L308)
+- [src/main/services/idphoto.service.ts:1-200](file://src/main/services/idphoto.service.ts#L1-L200)
 - [src/main/services/rename.service.ts:41-336](file://src/main/services/rename.service.ts#L41-L336)
 - [src/main/services/orientation.service.ts:33-153](file://src/main/services/orientation.service.ts#L33-L153)
 
@@ -128,18 +144,18 @@ M_IPC --> S_ORIENT
 
 ```mermaid
 sequenceDiagram
-participant UI as "渲染组件<br/>Scanning/Rename/Orientation组件"
+participant UI as "渲染组件<br/>Scanning/Rename/Orientation/IDPhoto组件"
 participant API as "window.api<br/>preload/index.ts"
 participant Pre as "预加载脚本<br/>contextBridge"
 participant Main as "主进程处理器<br/>main/ipc/index.ts"
-participant Svc as "服务层<br/>scanner/hash/dedup/rename/orientation"
+participant Svc as "服务层<br/>scanner/hash/dedup/idphoto/rename/orientation"
 participant Win as "BrowserWindow"
-UI->>API : 调用 API 方法如 folder : scan 或 rename : scanExif
+UI->>API : 调用 API 方法如 folder : scan 或 idphoto : process
 API->>Pre : ipcRenderer.invoke(channel, payload)
 Pre->>Main : 传递IPC消息
-Main->>Svc : 调用对应服务如 scanFolder 或 extractExifBatch
+Main->>Svc : 调用对应服务如 scanFolder 或 processIdPhoto
 Svc-->>Main : 返回结果或触发进度回调
-Main->>Win : webContents.send("scan : progress" 或 "rename : progress")
+Main->>Win : webContents.send("scan : progress" 或 "idphoto : progress")
 Win-->>API : 事件转发到渲染进程
 API-->>UI : 触发对应 onXxxProgress 回调
 Main-->>Pre : 返回invoke结果
@@ -157,7 +173,7 @@ API-->>UI : 完成调用
 ### 预加载脚本与contextBridge安全机制
 - 暴露范围最小化：仅暴露必要的API到window.api，避免直接暴露Node/Electron全量能力
 - 类型声明：通过preload/index.d.ts提供完整的类型签名，确保编译期安全
-- **进度监听扩展**：提供onScanProgress、onHashProgress、onDedupProgress、onRenameProgress、onOrientationProgress五个事件监听器，返回解绑函数
+- **进度监听扩展**：提供onScanProgress、onHashProgress、onDedupProgress、onIdPhotoProgress、onRenameProgress、onOrientationProgress六个事件监听器，返回解绑函数
 - 错误隔离：IPC调用失败时由渲染进程捕获，避免泄露底层异常细节
 
 ```mermaid
@@ -175,14 +191,13 @@ class PreloadAPI {
 +getThumbnail(filePath,maxSize?) Promise<string>
 +getSettings() Promise<AppSettings>
 +setSettings(partial) Promise<AppSettings>
-+scanExif(files) Promise<ExifInfo[]>
-+previewRename(data) Promise<RenamePreview[]>
-+executeRename(data) Promise<{success : number,errors : string[]}>
-+scanOrientations(files) Promise<OrientationInfo[]>
-+fixOrientations(data) Promise<{success : number,errors : string[]}>
++processIdPhoto(params) Promise<IdPhotoResult>
++recolorIdPhoto(params) Promise<IdPhotoResult>
++recolorIdPhotoPreview(sourcePath,targetBgColor,tolerance) Promise<string>
 +onScanProgress(cb) () => void
 +onHashProgress(cb) () => void
 +onDedupProgress(cb) () => void
++onIdPhotoProgress(cb) () => void
 +onRenameProgress(cb) () => void
 +onOrientationProgress(cb) () => void
 }
@@ -194,6 +209,9 @@ class Types {
 +DedupDecision
 +DedupSettings
 +AppSettings
++IdPhotoParams
++IdPhotoResult
++IdPhotoProgress
 +ExifInfo
 +RenamePreview
 +RenameConfig
@@ -224,6 +242,10 @@ PreloadAPI --> Types : "使用"
 - 去重执行：dedup:execute（payload包含decisions、settings、sourceFolder、files）
 - 缩略图：file:thumbnail（payload包含filePath、maxSize可选）
 - 设置：settings:get、settings:set（payload为部分设置）
+- **ID照片功能**：
+  - idphoto:process（payload包含params，返回IdPhotoResult）
+  - idphoto:recolor（payload包含params，返回IdPhotoResult）
+  - idphoto:recolorPreview（payload包含sourcePath、targetBgColor、tolerance，返回data URI）
 - **重命名功能**：
   - rename:scanExif（payload包含files数组，返回ExifInfo[]）
   - rename:preview（payload包含exifInfos、settings、sourceFolder，返回RenamePreview[]）
@@ -238,17 +260,17 @@ participant UI as "渲染组件"
 participant API as "window.api"
 participant Main as "主进程处理器"
 participant Svc as "服务层"
-UI->>API : invoke("rename : scanExif", {files})
+UI->>API : invoke("idphoto : process", {params})
 API->>Main : IPC消息
-Main->>Svc : extractExifBatch(files, onProgress)
-Svc-->>Main : 返回ExifInfo[]
-Main-->>API : Promise.resolve(ExifInfo[])
+Main->>Svc : processIdPhoto(params, onProgress)
+Svc-->>Main : 返回IdPhotoResult
+Main-->>API : Promise.resolve(IdPhotoResult)
 API-->>UI : Promise.then(result)
 ```
 
 **图表来源**
 - [src/main/ipc/index.ts:172-223](file://src/main/ipc/index.ts#L172-L223)
-- [src/main/services/rename.service.ts:41-102](file://src/main/services/rename.service.ts#L41-L102)
+- [src/main/services/idphoto.service.ts:1-200](file://src/main/services/idphoto.service.ts#L1-L200)
 
 **章节来源**
 - [src/main/ipc/index.ts:37-308](file://src/main/ipc/index.ts#L37-L308)
@@ -257,9 +279,10 @@ API-->>UI : Promise.then(result)
 - 扫描阶段：主进程在扫描服务回调中向渲染进程发送scan:progress，包含phase、current、total、percentage
 - 哈希阶段：主进程在哈希服务回调中向渲染进程发送hash:progress，phase为hashing或phashing
 - 去重阶段：主进程在去重执行回调中向渲染进程发送dedup:progress，包含current、total、currentFile、percentage
+- **ID照片阶段**：主进程在ID照片服务回调中向渲染进程发送idphoto:progress，phase为processing或recoloring
 - **重命名阶段**：主进程在重命名服务回调中向渲染进程发送rename:progress，phase为scanning、geocoding或executing
 - **方向修正阶段**：主进程在方向修正服务回调中向渲染进程发送orientation:progress，phase为scanning或fixing
-- 渲染侧订阅：预加载脚本提供onScanProgress、onHashProgress、onDedupProgress、onRenameProgress、onOrientationProgress五个监听器，返回解绑函数
+- 渲染侧订阅：预加载脚本提供onScanProgress、onHashProgress、onDedupProgress、onIdPhotoProgress、onRenameProgress、onOrientationProgress六个监听器，返回解绑函数
 
 ```mermaid
 flowchart TD
@@ -272,13 +295,16 @@ Send2 --> Render2["渲染侧 onHashProgress 回调"]
 Render2 --> DedupExec["去重执行删除/复制"]
 DedupExec --> Send3["主进程发送 dedup:progress"]
 Send3 --> Render3["渲染侧 onDedupProgress 回调"]
-Render3 --> Rename["重命名EXIF信息提取<br/>触发onProgress(phase)"]
-Rename --> Send4["主进程发送 rename:progress"]
-Send4 --> Render4["渲染侧 onRenameProgress 回调"]
-Render4 --> Orient["方向修正检测/修复<br/>触发onProgress(phase)"]
-Orient --> Send5["主进程发送 orientation:progress"]
-Send5 --> Render5["渲染侧 onOrientationProgress 回调"]
-Render5 --> End(["完成"])
+Render3 --> IdPhoto["ID照片处理<br/>触发onProgress(phase)"]
+IdPhoto --> Send4["主进程发送 idphoto:progress"]
+Send4 --> Render4["渲染侧 onIdPhotoProgress 回调"]
+Render4 --> Rename["重命名EXIF信息提取<br/>触发onProgress(phase)"]
+Rename --> Send5["主进程发送 rename:progress"]
+Send5 --> Render5["渲染侧 onRenameProgress 回调"]
+Render5 --> Orient["方向修正检测/修复<br/>触发onProgress(phase)"]
+Orient --> Send6["主进程发送 orientation:progress"]
+Send6 --> Render6["渲染侧 onOrientationProgress 回调"]
+Render6 --> End(["完成"])
 ```
 
 **图表来源**
@@ -345,6 +371,28 @@ Copy --> Ret2["返回 {success, errors}"]
 **章节来源**
 - [src/main/services/dedup.service.ts:117-208](file://src/main/services/dedup.service.ts#L117-L208)
 
+### ID照片功能模块
+- **证件照生成**：基于人脸检测算法，自动裁剪并生成标准尺寸证件照
+- **背景替换**：支持纯色背景、渐变背景和自定义背景的智能替换
+- **颜色预览**：实时预览背景替换效果，支持容差调节
+- **尺寸预设**：内置多种国际标准证件照尺寸规格
+- **进度反馈**：按处理阶段统计进度，包含processing和recoloring两个阶段
+
+```mermaid
+flowchart TD
+A["输入：源图片 + 参数"] --> B["人脸检测与定位<br/>批次大小=1"]
+B --> C["自动裁剪与标准化<br/>保持比例与居中"]
+C --> D["背景替换<br/>支持纯色/渐变/自定义"]
+D --> E["尺寸调整与输出<br/>符合预设规格"]
+E --> F["进度上报<br/>idphoto:progress"]
+```
+
+**图表来源**
+- [src/main/services/idphoto.service.ts:1-200](file://src/main/services/idphoto.service.ts#L1-L200)
+
+**章节来源**
+- [src/main/services/idphoto.service.ts:1-200](file://src/main/services/idphoto.service.ts#L1-L200)
+
 ### 重命名功能模块
 - **EXIF信息提取**：批量读取DateTimeOriginal、GPSLatitude、GPSLongitude等关键元数据
 - **地理位置反向地理编码**：使用OpenStreetMap Nominatim API将GPS坐标转换为地点名称，带缓存机制
@@ -392,7 +440,7 @@ F --> G["执行文件操作"]
 - [src/main/services/orientation.service.ts:33-153](file://src/main/services/orientation.service.ts#L33-L153)
 
 ### 设置持久化
-- **多模块配置结构**：dedup、rename、orientation三个独立配置对象
+- **多模块配置结构**：dedup、rename、orientation、idphoto四个独立配置对象
 - 默认设置：各模块都有完整的默认配置，支持主题颜色和输出后缀
 - 读取：合并默认值与存储值，支持旧格式迁移
 - 更新：深度合并部分设置，写入存储并返回最新设置
@@ -404,30 +452,34 @@ F --> G["执行文件操作"]
 - 预加载脚本依赖主进程IPC处理器提供的通道名称与数据结构
 - 主进程处理器依赖服务层实现具体业务逻辑
 - 渲染组件通过Zustand状态管理与window.api交互，订阅进度事件
-- **新增功能模块**：重命名和方向修正功能通过各自的IPC处理器与服务层交互
+- **新增功能模块**：ID照片、重命名和方向修正功能通过各自的IPC处理器与服务层交互
 
 ```mermaid
 graph LR
 R1["ScanningStep.tsx"] --> A1["window.api.onScanProgress"]
 R2["CompareStep.tsx"] --> A2["window.api.getThumbnail"]
-R3["Rename组件"] --> A3["window.api.scanExif/previewRename/executeRename"]
-R4["Orientation组件"] --> A4["window.api.scanOrientations/fixOrientations"]
+R3["IDPhoto组件"] --> A3["window.api.processIdPhoto/recolorIdPhoto/recolorIdPhotoPreview"]
+R4["Rename组件"] --> A4["window.api.scanExif/previewRename/executeRename"]
+R5["Orientation组件"] --> A5["window.api.scanOrientations/fixOrientations"]
 A1 --> P1["preload/index.ts"]
 A2 --> P1
 A3 --> P1
 A4 --> P1
+A5 --> P1
 P1 --> M1["main/ipc/index.ts"]
 M1 --> S1["scanner.service.ts"]
 M1 --> S2["hash.service.ts"]
 M1 --> S3["dedup.service.ts"]
 M1 --> S4["settings.service.ts"]
-M1 --> S5["rename.service.ts"]
-M1 --> S6["orientation.service.ts"]
+M1 --> S5["idphoto.service.ts"]
+M1 --> S6["rename.service.ts"]
+M1 --> S7["orientation.service.ts"]
 ```
 
 **图表来源**
 - [src/preload/index.ts:198-227](file://src/preload/index.ts#L198-L227)
 - [src/main/ipc/index.ts:172-307](file://src/main/ipc/index.ts#L172-L307)
+- [src/main/services/idphoto.service.ts:1-200](file://src/main/services/idphoto.service.ts#L1-L200)
 - [src/main/services/rename.service.ts:41-336](file://src/main/services/rename.service.ts#L41-L336)
 - [src/main/services/orientation.service.ts:33-153](file://src/main/services/orientation.service.ts#L33-L153)
 
@@ -440,29 +492,33 @@ M1 --> S6["orientation.service.ts"]
   - 扫描：每批约50个文件后让渡事件循环
   - SHA-256：每批20个文件
   - pHash：每批5个文件
+  - **ID照片处理**：每批1个文件（人脸检测耗时较长）
   - **EXIF提取**：每批10个文件
   - **方向检测**：每批20个文件
 - I/O优化
   - 流式读取文件计算SHA-256，避免大文件内存占用
   - sharp进行图像处理，减少中间缓冲
+  - **ID照片**：使用GPU加速的人脸检测算法
   - **重命名**：复制模式使用mkdir递归创建目录，避免重复I/O
 - 并发控制
   - 各批内Promise.all并发计算，批间串行以控制资源占用
+  - **ID照片**：单线程处理避免人脸检测冲突
   - **反向地理编码**：Nominatim API限速1次/秒，避免被封禁
 - 进度粒度
   - 每批完成后上报进度，避免过于频繁的事件导致UI卡顿
-  - **重命名和方向修正**：按需修正文件数量统计，提供更精确的进度反馈
+  - **ID照片、重命名和方向修正**：按需处理的文件数量统计，提供更精确的进度反馈
 
 **章节来源**
 - [src/main/services/scanner.service.ts:78-82](file://src/main/services/scanner.service.ts#L78-L82)
 - [src/main/services/hash.service.ts:36-53](file://src/main/services/hash.service.ts#L36-L53)
 - [src/main/services/hash.service.ts:139-156](file://src/main/services/hash.service.ts#L139-L156)
+- [src/main/services/idphoto.service.ts:1-200](file://src/main/services/idphoto.service.ts#L1-L200)
 - [src/main/services/rename.service.ts:32](file://src/main/services/rename.service.ts#L32)
 - [src/main/services/orientation.service.ts:31](file://src/main/services/orientation.service.ts#L31)
 
 ## 故障排查指南
 - 无法收到进度事件
-  - 检查是否正确订阅onScanProgress、onHashProgress、onDedupProgress、onRenameProgress、onOrientationProgress并妥善保存解绑函数
+  - 检查是否正确订阅onScanProgress、onHashProgress、onDedupProgress、onIdPhotoProgress、onRenameProgress、onOrientationProgress并妥善保存解绑函数
   - 确认主进程处理器已注册对应通道
 - 哈希计算返回错误
   - SHA-256错误会返回特定标记，渲染侧应忽略该条目或提示用户
@@ -470,6 +526,10 @@ M1 --> S6["orientation.service.ts"]
 - 去重执行失败
   - 删除模式：检查权限与路径有效性
   - 复制模式：检查目标目录创建与写入权限
+- **ID照片功能问题**
+  - 人脸检测失败：检查图像质量与人脸检测算法
+  - 背景替换错误：检查目标背景颜色与容差设置
+  - 颜色预览失败：检查图像格式与sharp依赖
 - **重命名功能问题**
   - EXIF读取失败：检查exifr库依赖和文件权限
   - 反向地理编码失败：检查网络连接和Nominatim API可用性，查看缓存状态
@@ -483,12 +543,13 @@ M1 --> S6["orientation.service.ts"]
 **章节来源**
 - [src/preload/index.ts:198-227](file://src/preload/index.ts#L198-L227)
 - [src/main/ipc/index.ts:57-307](file://src/main/ipc/index.ts#L57-L307)
+- [src/main/services/idphoto.service.ts:1-200](file://src/main/services/idphoto.service.ts#L1-L200)
 - [src/main/services/rename.service.ts:104-150](file://src/main/services/rename.service.ts#L104-L150)
 - [src/main/services/orientation.service.ts:79-153](file://src/main/services/orientation.service.ts#L79-L153)
 - [src/main/services/settings.service.ts:110-128](file://src/main/services/settings.service.ts#L110-L128)
 
 ## 结论
-本IPC通信层通过contextBridge实现了最小暴露面的安全边界，结合主进程处理器与服务层，提供了从文件扫描、哈希计算、感知哈希到去重执行的完整工作流，并通过多级进度事件实现良好的用户体验。**新增的重命名和方向修正功能模块进一步丰富了应用的照片管理能力，通过EXIF信息提取、地理位置反向地理编码和自动旋转修正等功能，为用户提供更全面的照片处理解决方案。**整体设计在安全性、可维护性与性能之间取得平衡，适合大规模照片库的综合处理场景。
+本IPC通信层通过contextBridge实现了最小暴露面的安全边界，结合主进程处理器与服务层，提供了从文件扫描、哈希计算、感知哈希到去重执行的完整工作流，并通过多级进度事件实现良好的用户体验。**新增的ID照片、重命名和方向修正功能模块进一步丰富了应用的照片管理能力，通过人脸检测、背景替换、EXIF信息提取、地理位置反向地理编码和自动旋转修正等功能，为用户提供更全面的照片处理解决方案。**整体设计在安全性、可维护性与性能之间取得平衡，适合大规模照片库的综合处理场景。
 
 ## 附录：API接口与数据模型
 
@@ -511,6 +572,10 @@ M1 --> S6["orientation.service.ts"]
 - 设置
   - getSettings(): Promise<AppSettings>
   - setSettings(s: Partial<AppSettings>): Promise<AppSettings>
+- **ID照片功能**
+  - processIdPhoto(params: IdPhotoParams): Promise<IdPhotoResult>
+  - recolorIdPhoto(params: IdPhotoParams): Promise<IdPhotoResult>
+  - recolorIdPhotoPreview(sourcePath: string, targetBgColor: string, tolerance: number): Promise<string>
 - **重命名功能**
   - scanExif(files: FileInfo[]): Promise<ExifInfo[]>
   - previewRename(data: { exifInfos: ExifInfo[]; settings: RenameConfig; sourceFolder: string }): Promise<RenamePreview[]>
@@ -520,8 +585,9 @@ M1 --> S6["orientation.service.ts"]
   - fixOrientations(data: { files: OrientationInfo[]; settings: OrientationConfig; sourceFolder: string }): Promise<{ success: number; errors: string[] }>
 - **进度监听**
   - onScanProgress(cb: (data: ScanProgress) => void): () => void
-  - onHashProgress(cb: (data: ScanProgress) => void): () => void
+  - onHashProgress(cb: (data: HashProgress) => void): () => void
   - onDedupProgress(cb: (data: DedupProgress) => void): () => void
+  - onIdPhotoProgress(cb: (data: IdPhotoProgress) => void): () => void
   - onRenameProgress(cb: (data: RenameProgress) => void): () => void
   - onOrientationProgress(cb: (data: OrientationProgress) => void): () => void
 
@@ -537,15 +603,24 @@ M1 --> S6["orientation.service.ts"]
   - DuplicateGroup：groupId、hash、matchType、files
   - DedupDecision：groupId、keepFileIds、deleteFileIds
   - DedupSettings：outputMode、outputFolderName
+- **ID照片模型**
+  - IdPhotoParams：sourcePath、preset、bgColor、cropRect、recolorTolerance
+  - IdPhotoResult：processedPath、previewDataUrl、processedFiles
+  - IdPhotoProgress：phase、current、total、percentage
+  - IdPhotoSizePreset：name、width、height、unit、description
+  - BgColorOption：name、value、isGradient
+  - CropRect：x、y、width、height
 - **设置模型**
   - ThemeColor：'black' | 'white' | 'beige' | 'skyblue' | 'darkblue' | 'kleinblue' | 'gray'
   - DedupConfig：hashMode、phashThreshold、outputMode
   - RenameConfig：outputMode、nameFormat、dateFormat、separator
   - OrientationConfig：outputMode
-  - AppSettings：dedup、rename、orientation、outputFolderSuffix、themeColor
+  - IdPhotoConfig：preset、bgColor、cropRect、recolorTolerance
+  - AppSettings：dedup、rename、orientation、idphoto、outputFolderSuffix、themeColor
 - **进度模型**
   - ScanProgress：phase、current、total、percentage
   - DedupProgress：current、total、currentFile、percentage
+  - **IdPhotoProgress**：phase、current、total、percentage
   - **RenameProgress**：phase、current、total、percentage
   - **OrientationProgress**：phase、current、total、percentage
 - **重命名模型**
@@ -557,6 +632,7 @@ M1 --> S6["orientation.service.ts"]
 **章节来源**
 - [src/preload/index.ts:3-129](file://src/preload/index.ts#L3-L129)
 - [src/preload/index.d.ts:1-20](file://src/preload/index.d.ts#L1-L20)
+- [src/renderer/src/types/idphoto.ts:1-200](file://src/renderer/src/types/idphoto.ts#L1-L200)
 
 ### IPC通道与调用协议
 - 窗口控制
@@ -595,6 +671,16 @@ M1 --> S6["orientation.service.ts"]
   - channel: settings:set
   - payload: Partial<AppSettings>
   - 返回：AppSettings
+- **ID照片功能**
+  - channel: idphoto:process
+  - payload: { params: IdPhotoParams }
+  - 返回：IdPhotoResult
+  - channel: idphoto:recolor
+  - payload: { params: IdPhotoParams }
+  - 返回：IdPhotoResult
+  - channel: idphoto:recolorPreview
+  - payload: { sourcePath: string; targetBgColor: string; tolerance: number }
+  - 返回：string（data URI）
 - **重命名功能**
   - channel: rename:scanExif
   - payload: { files: FileInfo[] }
@@ -624,6 +710,10 @@ M1 --> S6["orientation.service.ts"]
 - 去重执行错误
   - 删除模式：单个文件删除失败时，记录错误信息并继续处理
   - 复制模式：单个文件复制失败时，记录错误信息并继续处理
+- **ID照片功能错误**
+  - 人脸检测失败：返回null或空结果，使用默认处理
+  - 背景替换失败：返回原始图像或错误标记
+  - 颜色预览失败：返回空字符串，使用默认预览
 - **重命名功能错误**
   - EXIF读取失败：返回空的GPS坐标和null的地点名称
   - 反向地理编码失败：返回null，使用缓存或默认值
@@ -638,6 +728,7 @@ M1 --> S6["orientation.service.ts"]
 - [src/main/services/hash.service.ts:43-45](file://src/main/services/hash.service.ts#L43-L45)
 - [src/main/services/hash.service.ts:146-148](file://src/main/services/hash.service.ts#L146-L148)
 - [src/main/services/dedup.service.ts:149-153](file://src/main/services/dedup.service.ts#L149-L153)
+- [src/main/services/idphoto.service.ts:1-200](file://src/main/services/idphoto.service.ts#L1-L200)
 - [src/main/services/rename.service.ts:84-93](file://src/main/services/rename.service.ts#L84-L93)
 - [src/main/services/orientation.service.ts:59](file://src/main/services/orientation.service.ts#L59)
 - [src/main/services/settings.service.ts:110-128](file://src/main/services/settings.service.ts#L110-L128)

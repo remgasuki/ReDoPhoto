@@ -35,9 +35,22 @@ import {
   getImageInfo,
   recolorBackground,
   getRecolorPreview,
+  recolorBackgroundAI,
+  getRecolorPreviewAI,
   type IdPhotoProcessParams,
   type RecolorParams
 } from '../services/idphoto.service'
+import { getBeautyPreview, type BeautyParams } from '../services/beauty.service'
+import {
+  compressToTargetSize,
+  batchCompress,
+  type CompressParams
+} from '../services/compress.service'
+import {
+  generatePrintLayout,
+  getPrintLayoutPreview,
+  type PrintLayoutParams
+} from '../services/print-layout.service'
 
 let cachedFiles: FileInfo[] = []
 const cachedFilesMap = new Map<string, FileInfo[]>()
@@ -367,6 +380,67 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     'idphoto:recolorPreview',
     async (_event, { sourcePath, targetBgColor, tolerance }: { sourcePath: string; targetBgColor: string; tolerance: number }) => {
       return getRecolorPreview(sourcePath, targetBgColor, tolerance)
+    }
+  )
+
+  // === AI Recolor ===
+  ipcMain.handle(
+    'idphoto:recolorAI',
+    async (_event, { params }: { params: RecolorParams }) => {
+      return recolorBackgroundAI(params, (phase, percentage) => {
+        mainWindow.webContents.send('idphoto:progress', { phase, percentage })
+      })
+    }
+  )
+
+  ipcMain.handle(
+    'idphoto:recolorPreviewAI',
+    async (_event, { sourcePath, targetBgColor }: { sourcePath: string; targetBgColor: string }) => {
+      return getRecolorPreviewAI(sourcePath, targetBgColor)
+    }
+  )
+
+  // === Beauty filter ===
+  ipcMain.handle(
+    'idphoto:beautyPreview',
+    async (_event, { sourcePath, params }: { sourcePath: string; params: BeautyParams }) => {
+      return getBeautyPreview(sourcePath, params)
+    }
+  )
+
+  // === Compress ===
+  ipcMain.handle(
+    'idphoto:compress',
+    async (_event, { params }: { params: CompressParams }) => {
+      return compressToTargetSize(params, (iteration, currentSizeKB, quality) => {
+        mainWindow.webContents.send('idphoto:compressProgress', { iteration, currentSizeKB, quality })
+      })
+    }
+  )
+
+  ipcMain.handle(
+    'idphoto:batchCompress',
+    async (_event, { sources, targetSizeKB }: { sources: Array<{ sourcePath: string; outputPath: string }>; targetSizeKB: number }) => {
+      return batchCompress(sources, targetSizeKB, (current, total, file) => {
+        mainWindow.webContents.send('idphoto:batchCompressProgress', { current, total, file })
+      })
+    }
+  )
+
+  // === Print Layout ===
+  ipcMain.handle(
+    'idphoto:printLayout',
+    async (_event, { params }: { params: PrintLayoutParams }) => {
+      return generatePrintLayout(params, (phase, percentage) => {
+        mainWindow.webContents.send('idphoto:printLayoutProgress', { phase, percentage })
+      })
+    }
+  )
+
+  ipcMain.handle(
+    'idphoto:printLayoutPreview',
+    async (_event, { photoPath, rows, cols, spacingMm }: { photoPath: string; rows: number; cols: number; spacingMm: number }) => {
+      return getPrintLayoutPreview(photoPath, rows, cols, spacingMm)
     }
   )
 }

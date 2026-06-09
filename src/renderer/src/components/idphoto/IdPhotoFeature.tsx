@@ -3,6 +3,7 @@ import IdPhotoImport from './IdPhotoImport'
 import IdPhotoPreview from './IdPhotoPreview'
 import IdPhotoRecolorPreview from './IdPhotoRecolorPreview'
 import IdPhotoExecute from './IdPhotoExecute'
+import PrintLayoutPanel from './PrintLayoutPanel'
 import type { ThemeClasses } from '../../types/theme'
 
 interface IdPhotoFeatureProps {
@@ -18,6 +19,7 @@ export default function IdPhotoFeature({ theme }: IdPhotoFeatureProps) {
       {phase === 'preview' && <IdPhotoPreview theme={theme} />}
       {phase === 'recolor_preview' && <IdPhotoRecolorPreview theme={theme} />}
       {(phase === 'executing' || phase === 'done') && <IdPhotoExecute theme={theme} />}
+      {phase === 'print_layout' && <PrintLayoutPanel theme={theme} />}
     </>
   )
 }

@@ -21,7 +21,12 @@ export type {
   CropRect,
   IdPhotoProcessParams,
   RecolorParams,
-  IdPhotoProgress
+  IdPhotoProgress,
+  BeautyParams,
+  CompressParams,
+  CompressResult,
+  PrintLayoutParams,
+  PrintLayoutResult
 } from './index'
 
 interface ElectronAPI {
@@ -90,6 +95,21 @@ interface ElectronAPI {
   recolorIdPhoto: (params: import('./index').RecolorParams) => Promise<{ success: boolean; outputPath: string; error?: string }>
   getRecolorPreview: (sourcePath: string, targetBgColor: string, tolerance: number) => Promise<string>
   onIdPhotoProgress: (cb: (data: import('./index').IdPhotoProgress) => void) => () => void
+
+  // AI Recolor
+  recolorIdPhotoAI: (params: import('./index').RecolorParams) => Promise<{ success: boolean; outputPath: string; error?: string }>
+  getRecolorPreviewAI: (sourcePath: string, targetBgColor: string) => Promise<string>
+
+  // Beauty filter
+  getBeautyPreview: (sourcePath: string, params: import('./index').BeautyParams) => Promise<string>
+
+  // Compress
+  compressToTargetSize: (params: import('./index').CompressParams) => Promise<import('./index').CompressResult>
+  batchCompress: (sources: Array<{ sourcePath: string; outputPath: string }>, targetSizeKB: number) => Promise<import('./index').CompressResult[]>
+
+  // Print layout
+  generatePrintLayout: (params: import('./index').PrintLayoutParams) => Promise<import('./index').PrintLayoutResult>
+  getPrintLayoutPreview: (photoPath: string, rows: number, cols: number, spacingMm: number) => Promise<string>
 }
 
 declare global {

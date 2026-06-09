@@ -11,7 +11,8 @@ interface IdPhotoPreviewProps {
 export default function IdPhotoPreview({ theme }: IdPhotoPreviewProps) {
   const {
     sourceImageBase64, sourceWidth, sourceHeight,
-    selectedPreset, selectedBgColor, cropRect,
+    selectedPreset, selectedBgColor, cropRect, beautyParams, useAIMatting,
+    selectedGradient, selectedFormalWear,
     setCropRect, setPhase, setOutputPath, setResult, setError
   } = useIdPhotoStore()
   const settings = useSettingsStore((s) => s.settings)
@@ -256,7 +257,11 @@ export default function IdPhotoPreview({ theme }: IdPhotoPreviewProps) {
         dpi: preset.dpi,
         bgColor: selectedBgColor.colorValue || null,
         outputFormat: settings.idphoto.outputFormat,
-        quality: settings.idphoto.quality
+        quality: settings.idphoto.quality,
+        beauty: beautyParams ?? undefined,
+        gradient: selectedGradient ?? undefined,
+        formalWearTemplatePath: selectedFormalWear?.imagePath,
+        useAIMatting: useAIMatting
       })
 
       setResult(result)

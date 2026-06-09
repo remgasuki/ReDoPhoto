@@ -164,8 +164,54 @@ export interface RecolorParams {
 }
 
 export interface IdPhotoProgress {
-  phase: 'processing' | 'done'
+  phase: 'processing' | 'ai_matting' | 'compositing' | 'saving' | 'done'
   percentage: number
+}
+
+export interface BeautyParams {
+  smooth: number
+  brightness: number
+  contrast: number
+}
+
+export interface CompressParams {
+  sourcePath: string
+  outputPath: string
+  targetSizeKB: number
+  toleranceKB?: number
+  minQuality?: number
+  maxQuality?: number
+}
+
+export interface CompressResult {
+  success: boolean
+  outputPath: string
+  originalSizeKB: number
+  actualSizeKB: number
+  quality: number
+  iterations: number
+  error?: string
+}
+
+export interface PrintLayoutParams {
+  photoPath: string
+  paperWidthInch: number
+  paperHeightInch: number
+  dpi: number
+  rows: number
+  cols: number
+  spacingMm: number
+  outputPath: string
+  outputFormat: 'jpg' | 'png'
+  quality: number
+}
+
+export interface PrintLayoutResult {
+  success: boolean
+  outputPath: string
+  paperSizePx: { width: number; height: number }
+  actualCount: number
+  error?: string
 }
 
 const api = {
@@ -288,7 +334,32 @@ const api = {
     const handler = (_event: any, data: IdPhotoProgress) => cb(data)
     ipcRenderer.on('idphoto:progress', handler)
     return () => ipcRenderer.removeListener('idphoto:progress', handler)
-  }
+  },
+
+  // AI Recolor
+  recolorIdPhotoAI: (params: RecolorParams): Promise<{ success: boolean; outputPath: string; error?: string }> =>
+    ipcRenderer.invoke('idphoto:recolorAI', { params }),
+
+  getRecolorPreviewAI: (sourcePath: string, targetBgColor: string): Promise<string> =>
+    ipcRenderer.invoke('idphoto:recolorPreviewAI', { sourcePath, targetBgColor }),
+
+  // Beauty filter
+  getBeautyPreview: (sourcePath: string, params: BeautyParams): Promise<string> =>
+    ipcRenderer.invoke('idphoto:beautyPreview', { sourcePath, params }),
+
+  // Compress
+  compressToTargetSize: (params: CompressParams): Promise<CompressResult> =>
+    ipcRenderer.invoke('idphoto:compress', { params }),
+
+  batchCompress: (sources: Array<{ sourcePath: string; outputPath: string }>, targetSizeKB: number): Promise<CompressResult[]> =>
+    ipcRenderer.invoke('idphoto:batchCompress', { sources, targetSizeKB }),
+
+  // Print layout
+  generatePrintLayout: (params: PrintLayoutParams): Promise<PrintLayoutResult> =>
+    ipcRenderer.invoke('idphoto:printLayout', { params }),
+
+  getPrintLayoutPreview: (photoPath: string, rows: number, cols: number, spacingMm: number): Promise<string> =>
+    ipcRenderer.invoke('idphoto:printLayoutPreview', { photoPath, rows, cols, spacingMm })
 }
 
 contextBridge.exposeInMainWorld('api', api)

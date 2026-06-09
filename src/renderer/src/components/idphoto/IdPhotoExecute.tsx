@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useIdPhotoStore } from '../../stores/idphotoStore'
 import type { ThemeClasses } from '../../types/theme'
+import CompressPanel from './CompressPanel'
 
 interface IdPhotoExecuteProps {
   theme: ThemeClasses
@@ -91,6 +92,19 @@ export default function IdPhotoExecute({ theme }: IdPhotoExecuteProps) {
                   保存至: {outputPath}
                 </p>
               )}
+
+              {/* Action buttons */}
+              <div className="flex flex-col gap-2 mb-4">
+                <button
+                  onClick={() => useIdPhotoStore.getState().setPhase('print_layout')}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-semibold transition-colors"
+                >
+                  制作6寸打印排版
+                </button>
+              </div>
+
+              {/* Compress panel */}
+              <CompressPanel theme={theme} />
             </>
           ) : (
             <>

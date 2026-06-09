@@ -1,4 +1,14 @@
 import sharp from 'sharp'
+import { join } from 'path'
+import { app } from 'electron'
+import type { BeautyParams } from './beauty.service'
+import { applyBeautyFilter } from './beauty.service'
+import {
+  generateAlphaMask,
+  compositeWithMask,
+  compositeWithGradient,
+  overlayFormalWear
+} from './matting.service'
 
 export interface CropRect {
   x: number
@@ -17,6 +27,14 @@ export interface IdPhotoProcessParams {
   bgColor: string | null
   outputFormat: 'jpg' | 'png'
   quality: number
+  beauty?: BeautyParams
+  gradient?: {
+    type: 'linear'
+    angle: number
+    colorStops: Array<{ offset: number; color: string }>
+  }
+  formalWearTemplatePath?: string
+  useAIMatting?: boolean
 }
 
 export interface RecolorParams {
@@ -26,6 +44,7 @@ export interface RecolorParams {
   tolerance: number
   outputFormat: 'jpg' | 'png'
   quality: number
+  beauty?: BeautyParams
 }
 
 export interface ImageInfo {
@@ -52,6 +71,14 @@ function parseHexColor(hex: string): { r: number; g: number; b: number } {
   }
 }
 
+function getTemplatePath(templateFileName: string): string {
+  const isDev = !app.isPackaged
+  if (isDev) {
+    return join(app.getAppPath(), 'resources', 'templates', templateFileName)
+  }
+  return join(process.resourcesPath, 'resources', 'templates', templateFileName)
+}
+
 export async function processIdPhoto(
   params: IdPhotoProcessParams,
   onProgress?: (phase: string, percentage: number) => void
@@ -62,7 +89,7 @@ export async function processIdPhoto(
     // Auto-rotate based on EXIF orientation first
     let pipeline = sharp(params.sourcePath).rotate()
 
-    onProgress?.('processing', 30)
+    onProgress?.('processing', 20)
 
     // Extract the crop region
     const { x, y, width, height } = params.cropRect
@@ -73,25 +100,153 @@ export async function processIdPhoto(
       height: Math.round(height)
     })
 
-    onProgress?.('processing', 50)
+    onProgress?.('processing', 35)
 
     // Resize to target dimensions
     pipeline = pipeline.resize(params.targetWidthPx, params.targetHeightPx, {
       fit: 'fill'
     })
 
-    onProgress?.('processing', 70)
+    onProgress?.('processing', 50)
 
-    // Apply background color if specified (replaces alpha transparency)
-    if (params.bgColor) {
-      const color = parseHexColor(params.bgColor)
-      pipeline = pipeline.flatten({ background: color })
+    // Apply beauty filter if specified
+    if (params.beauty && (params.beauty.smooth > 0 || params.beauty.brightness !== 0 || params.beauty.contrast !== 0)) {
+      const rawResult = await pipeline.ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+      const beautified = await applyBeautyFilter(
+        rawResult.data,
+        params.beauty,
+        rawResult.info.width,
+        rawResult.info.height,
+        rawResult.info.channels
+      )
+      pipeline = sharp(beautified, { raw: rawResult.info })
     }
+
+    onProgress?.('processing', 65)
+
+    // Handle background: gradient (AI matting required) or solid color
+    if (params.gradient && params.useAIMatting) {
+      // AI matting + gradient background
+      onProgress?.('ai_matting', 70)
+      const { mask, width: maskW, height: maskH } = await generateAlphaMask(params.sourcePath)
+
+      // Re-extract and resize from original for full quality
+      const fullPipeline = sharp(params.sourcePath).rotate()
+        .extract({ left: Math.round(x), top: Math.round(y), width: Math.round(width), height: Math.round(height) })
+        .resize(params.targetWidthPx, params.targetHeightPx, { fit: 'fill' })
+
+      const fullRaw = await fullPipeline.removeAlpha().raw().toBuffer({ resolveWithObject: true })
+
+      // Apply beauty on full quality if needed
+      let imageData = fullRaw.data
+      if (params.beauty && (params.beauty.smooth > 0 || params.beauty.brightness !== 0 || params.beauty.contrast !== 0)) {
+        imageData = await applyBeautyFilter(imageData, params.beauty, fullRaw.info.width, fullRaw.info.height, fullRaw.info.channels)
+      }
+
+      // Regenerate mask at target size
+      const tempBuffer = await sharp(imageData, { raw: fullRaw.info }).jpeg().toBuffer()
+      const tempPath = params.outputPath + '.tmp.jpg'
+      await sharp(tempBuffer).toFile(tempPath)
+      const maskResult = await generateAlphaMask(tempPath)
+
+      const resultBuffer = await compositeWithGradient(
+        tempPath,
+        maskResult.mask,
+        params.gradient,
+        maskResult.width,
+        maskResult.height
+      )
+
+      // Apply formal wear if specified
+      let finalBuffer = resultBuffer
+      if (params.formalWearTemplatePath) {
+        const tplPath = getTemplatePath(params.formalWearTemplatePath)
+        const rawInfo = await sharp(resultBuffer).raw().toBuffer({ resolveWithObject: true })
+        finalBuffer = await overlayFormalWear(
+          rawInfo.data,
+          rawInfo.info.width,
+          rawInfo.info.height,
+          tplPath
+        )
+      }
+
+      // Save
+      let outPipeline = sharp(finalBuffer)
+      outPipeline = outPipeline.withMetadata({ density: params.dpi })
+      if (params.outputFormat === 'png') {
+        outPipeline = outPipeline.png({ quality: params.quality })
+      } else {
+        outPipeline = outPipeline.jpeg({ quality: params.quality, mozjpeg: true })
+      }
+      await outPipeline.toFile(params.outputPath)
+
+      // Cleanup temp file
+      try { await sharp(tempPath).metadata() } catch {}
+
+      onProgress?.('done', 100)
+      return { success: true, outputPath: params.outputPath }
+    }
+
+    // Apply background color if specified
+    if (params.bgColor) {
+      if (params.useAIMatting) {
+        // AI matting path
+        onProgress?.('ai_matting', 70)
+        const color = parseHexColor(params.bgColor)
+
+        const fullPipeline = sharp(params.sourcePath).rotate()
+          .extract({ left: Math.round(x), top: Math.round(y), width: Math.round(width), height: Math.round(height) })
+          .resize(params.targetWidthPx, params.targetHeightPx, { fit: 'fill' })
+
+        const fullRaw = await fullPipeline.removeAlpha().raw().toBuffer({ resolveWithObject: true })
+        let imageData = fullRaw.data
+
+        if (params.beauty && (params.beauty.smooth > 0 || params.beauty.brightness !== 0 || params.beauty.contrast !== 0)) {
+          imageData = await applyBeautyFilter(imageData, params.beauty, fullRaw.info.width, fullRaw.info.height, fullRaw.info.channels)
+        }
+
+        const tempBuffer = await sharp(imageData, { raw: fullRaw.info }).jpeg().toBuffer()
+        const tempPath = params.outputPath + '.tmp.jpg'
+        await sharp(tempBuffer).toFile(tempPath)
+
+        const maskResult = await generateAlphaMask(tempPath)
+        const resultBuffer = await compositeWithMask(
+          tempPath,
+          maskResult.mask,
+          color,
+          maskResult.width,
+          maskResult.height
+        )
+
+        let finalBuffer = resultBuffer
+        if (params.formalWearTemplatePath) {
+          const tplPath = getTemplatePath(params.formalWearTemplatePath)
+          const rawInfo = await sharp(resultBuffer).raw().toBuffer({ resolveWithObject: true })
+          finalBuffer = await overlayFormalWear(rawInfo.data, rawInfo.info.width, rawInfo.info.height, tplPath)
+        }
+
+        let outPipeline = sharp(finalBuffer)
+        outPipeline = outPipeline.withMetadata({ density: params.dpi })
+        if (params.outputFormat === 'png') {
+          outPipeline = outPipeline.png({ quality: params.quality })
+        } else {
+          outPipeline = outPipeline.jpeg({ quality: params.quality, mozjpeg: true })
+        }
+        await outPipeline.toFile(params.outputPath)
+
+        onProgress?.('done', 100)
+        return { success: true, outputPath: params.outputPath }
+      } else {
+        // Legacy: simple flatten
+        const color = parseHexColor(params.bgColor)
+        pipeline = pipeline.flatten({ background: color })
+      }
+    }
+
+    onProgress?.('processing', 85)
 
     // Set DPI metadata
     pipeline = pipeline.withMetadata({ density: params.dpi })
-
-    onProgress?.('processing', 85)
 
     // Output format and quality
     if (params.outputFormat === 'png') {
@@ -100,7 +255,6 @@ export async function processIdPhoto(
       pipeline = pipeline.jpeg({ quality: params.quality, mozjpeg: true })
     }
 
-    // Write to file
     await pipeline.toFile(params.outputPath)
 
     onProgress?.('done', 100)
@@ -206,13 +360,11 @@ export async function getRecolorPreview(
       const dist = colorDistance(data[i], data[i + 1], data[i + 2], bgColor.r, bgColor.g, bgColor.b)
 
       if (dist < tolerance) {
-        // Full replacement
         output[i] = target.r
         output[i + 1] = target.g
         output[i + 2] = target.b
         if (channels === 4) output[i + 3] = 255
       } else if (dist < tolerance * 1.5) {
-        // Feathered edge: blend proportionally
         const blend = (dist - tolerance) / (tolerance * 0.5)
         output[i] = Math.round(target.r * (1 - blend) + data[i] * blend)
         output[i + 1] = Math.round(target.g * (1 - blend) + data[i + 1] * blend)
@@ -228,7 +380,7 @@ export async function getRecolorPreview(
 }
 
 /**
- * Replace background color of an ID photo (full resolution)
+ * Replace background color of an ID photo (full resolution) - legacy method
  */
 export async function recolorBackground(
   params: RecolorParams,
@@ -239,7 +391,6 @@ export async function recolorBackground(
 
     const target = parseHexColor(params.targetBgColor)
 
-    // Read image, auto-rotate, ensure alpha channel, get raw pixels
     const { data, info } = await sharp(params.sourcePath)
       .rotate()
       .ensureAlpha()
@@ -249,11 +400,9 @@ export async function recolorBackground(
     const { width, height, channels } = info
     onProgress?.('processing', 30)
 
-    // Detect background color from edges
     const bgColor = detectBackgroundColor(data, width, height, channels)
     const tolerance = params.tolerance
 
-    // Replace background pixels
     const output = Buffer.from(data)
     const totalPixels = width * height
     let processedPixels = 0
@@ -264,13 +413,11 @@ export async function recolorBackground(
         const dist = colorDistance(data[i], data[i + 1], data[i + 2], bgColor.r, bgColor.g, bgColor.b)
 
         if (dist < tolerance) {
-          // Full replacement
           output[i] = target.r
           output[i + 1] = target.g
           output[i + 2] = target.b
           if (channels === 4) output[i + 3] = 255
         } else if (dist < tolerance * 1.5) {
-          // Feathered edge for smooth transition
           const blend = (dist - tolerance) / (tolerance * 0.5)
           output[i] = Math.round(target.r * (1 - blend) + data[i] * blend)
           output[i + 1] = Math.round(target.g * (1 - blend) + data[i + 1] * blend)
@@ -280,7 +427,6 @@ export async function recolorBackground(
         processedPixels++
       }
 
-      // Report progress periodically
       if (processedPixels % (totalPixels / 5) < width) {
         onProgress?.('processing', 30 + Math.round((processedPixels / totalPixels) * 50))
       }
@@ -288,16 +434,13 @@ export async function recolorBackground(
 
     onProgress?.('processing', 85)
 
-    // Reconstruct image from raw data
     let pipeline = sharp(output, { raw: { width, height, channels } })
 
-    // Preserve original metadata (DPI etc.)
     const originalMeta = await sharp(params.sourcePath).metadata()
     if (originalMeta.density) {
       pipeline = pipeline.withMetadata({ density: originalMeta.density })
     }
 
-    // Output format
     if (params.outputFormat === 'png') {
       pipeline = pipeline.png({ quality: params.quality })
     } else {
@@ -314,5 +457,70 @@ export async function recolorBackground(
       outputPath: params.outputPath,
       error: `背景色替换失败: ${err}`
     }
+  }
+}
+
+/**
+ * AI-powered background recolor (full resolution)
+ */
+export async function recolorBackgroundAI(
+  params: RecolorParams,
+  onProgress?: (phase: string, percentage: number) => void
+): Promise<{ success: boolean; outputPath: string; error?: string }> {
+  try {
+    onProgress?.('ai_matting', 10)
+    const { mask, width, height } = await generateAlphaMask(params.sourcePath)
+
+    onProgress?.('compositing', 60)
+    const target = parseHexColor(params.targetBgColor)
+
+    // Create temp file for compositing (since compositeWithMask reads from path)
+    const resultBuffer = await compositeWithMask(params.sourcePath, mask, target, width, height)
+
+    onProgress?.('saving', 90)
+
+    let pipeline = sharp(resultBuffer)
+    const originalMeta = await sharp(params.sourcePath).metadata()
+    if (originalMeta.density) {
+      pipeline = pipeline.withMetadata({ density: originalMeta.density })
+    }
+
+    if (params.outputFormat === 'png') {
+      pipeline = pipeline.png({ quality: params.quality })
+    } else {
+      pipeline = pipeline.jpeg({ quality: params.quality, mozjpeg: true })
+    }
+
+    await pipeline.toFile(params.outputPath)
+
+    onProgress?.('done', 100)
+    return { success: true, outputPath: params.outputPath }
+  } catch (err) {
+    // Fallback to legacy method
+    return recolorBackground(params, onProgress)
+  }
+}
+
+/**
+ * AI-powered recolor preview (base64 thumbnail)
+ */
+export async function getRecolorPreviewAI(
+  sourcePath: string,
+  targetBgColor: string
+): Promise<string> {
+  try {
+    const target = parseHexColor(targetBgColor)
+    const { mask, width, height } = await generateAlphaMask(sourcePath)
+    const resultBuffer = await compositeWithMask(sourcePath, mask, target, width, height)
+
+    // Resize to thumbnail for preview
+    return sharp(resultBuffer)
+      .resize(400, null, { withoutEnlargement: true })
+      .jpeg({ quality: 85 })
+      .toBuffer()
+      .then((buf) => `data:image/jpeg;base64,${buf.toString('base64')}`)
+  } catch {
+    // Fallback to legacy preview
+    return getRecolorPreview(sourcePath, targetBgColor, 60)
   }
 }

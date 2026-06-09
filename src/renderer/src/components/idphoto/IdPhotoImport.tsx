@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import { useIdPhotoStore } from '../../stores/idphotoStore'
 import type { IdPhotoMode } from '../../stores/idphotoStore'
-import { ID_PHOTO_SIZE_PRESETS, BG_COLOR_OPTIONS, PRESET_CATEGORY_LABELS } from '../../types/idphoto'
-import type { IdPhotoSizePreset, BgColorOption } from '../../types/idphoto'
+import { ID_PHOTO_SIZE_PRESETS, BG_COLOR_OPTIONS, GRADIENT_PRESETS, PRESET_CATEGORY_LABELS } from '../../types/idphoto'
+import type { IdPhotoSizePreset, BgColorOption, CustomSizeTemplate, GradientBg } from '../../types/idphoto'
 import type { ThemeClasses } from '../../types/theme'
+import { mmToPx } from '../../utils/customTemplates'
+import BeautyPanel from './BeautyPanel'
+import ColorPicker from './ColorPicker'
+import FormalWearSelector from './FormalWearSelector'
 
 interface IdPhotoImportProps {
   theme: ThemeClasses
@@ -15,12 +19,20 @@ const RECOLOR_BG_OPTIONS = BG_COLOR_OPTIONS.filter((o) => o.key !== 'none')
 export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
   const {
     mode, sourcePath, sourceImageBase64, sourceWidth, sourceHeight,
-    selectedPreset, selectedBgColor, error,
+    selectedPreset, selectedBgColor, error, customTemplates, useAIMatting, selectedGradient,
     setMode, setSourcePath, setSourceImage, setSelectedPreset, setSelectedBgColor,
-    setCropRect, setPhase, setError, setRecoloredImageBase64
+    setCropRect, setPhase, setError, setRecoloredImageBase64,
+    addCustomTemplate, removeCustomTemplate, setUseAIMatting, setSelectedGradient
   } = useIdPhotoStore()
 
   const [recolorProcessing, setRecolorProcessing] = useState(false)
+  const [showCustomColor, setShowCustomColor] = useState(false)
+  const [showGradient, setShowGradient] = useState(false)
+
+  // Custom template form
+  const [customName, setCustomName] = useState('')
+  const [customWidthMm, setCustomWidthMm] = useState('')
+  const [customHeightMm, setCustomHeightMm] = useState('')
 
   const handleSelectImage = async () => {
     try {
@@ -67,7 +79,9 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
     setError(null)
 
     try {
-      const preview = await window.api.getRecolorPreview(sourcePath, selectedBgColor.colorValue, 60)
+      const preview = useAIMatting
+        ? await window.api.getRecolorPreviewAI(sourcePath, selectedBgColor.colorValue)
+        : await window.api.getRecolorPreview(sourcePath, selectedBgColor.colorValue, 60)
       setRecoloredImageBase64(preview)
       setPhase('recolor_preview')
     } catch (err) {
@@ -81,7 +95,35 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
     setMode(newMode)
   }
 
-  const categories = ['common', 'passport', 'special'] as const
+  const handleAddCustomTemplate = () => {
+    const w = parseFloat(customWidthMm)
+    const h = parseFloat(customHeightMm)
+    const name = customName.trim()
+    if (!name || isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
+      setError('请填写完整的自定义尺寸信息')
+      return
+    }
+    const dpi = 300
+    const template: CustomSizeTemplate = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      label: name,
+      widthMm: w,
+      heightMm: h,
+      widthPx: mmToPx(w, dpi),
+      heightPx: mmToPx(h, dpi),
+      dpi,
+      format: 'jpg',
+      category: 'custom',
+      createdAt: Date.now()
+    }
+    addCustomTemplate(template)
+    setCustomName('')
+    setCustomWidthMm('')
+    setCustomHeightMm('')
+    setError(null)
+  }
+
+  const categories = ['common', 'passport', 'visa', 'exam', 'special', 'custom'] as const
 
   return (
     <div className="h-full overflow-y-auto p-6 animate-fade-in">
@@ -138,10 +180,102 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
 
         {/* === Create mode: size presets === */}
         {mode === 'create' && sourceImageBase64 && (
+          <>
           <div>
             <h3 className={`text-sm font-semibold mb-3 ${theme.textMuted}`}>选择证件照尺寸</h3>
             <div className="space-y-4">
               {categories.map((cat) => {
+                if (cat === 'custom') {
+                  // Render custom templates
+                  const customPresets: IdPhotoSizePreset[] = customTemplates.map((t) => ({
+                    key: t.id,
+                    label: t.label,
+                    widthMm: t.widthMm,
+                    heightMm: t.heightMm,
+                    widthPx: t.widthPx,
+                    heightPx: t.heightPx,
+                    dpi: t.dpi,
+                    format: t.format,
+                    category: 'custom' as const
+                  }))
+                  return (
+                    <div key={cat}>
+                      <p className={`text-xs font-medium mb-2 ${theme.textDim}`}>
+                        {PRESET_CATEGORY_LABELS[cat]}
+                      </p>
+                      {customPresets.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                          {customPresets.map((preset) => (
+                            <div key={preset.key} className="relative">
+                              <PresetCard
+                                preset={preset}
+                                isSelected={selectedPreset?.key === preset.key}
+                                onClick={() => setSelectedPreset(preset)}
+                                theme={theme}
+                              />
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  const tpl = customTemplates.find((t) => t.id === preset.key)
+                                  if (tpl) removeCustomTemplate(tpl.id)
+                                  if (selectedPreset?.key === preset.key) setSelectedPreset(ID_PHOTO_SIZE_PRESETS[0])
+                                }}
+                                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center text-white text-xs transition-colors"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Custom template form */}
+                      <div className={`rounded-lg p-3 ${theme.inputBg} space-y-2`}>
+                        <p className={`text-xs font-medium ${theme.textDim}`}>添加自定义尺寸</p>
+                        <div className="flex gap-2 items-end">
+                          <div className="flex-1">
+                            <label className={`text-[10px] ${theme.textDim}`}>名称</label>
+                            <input
+                              type="text"
+                              value={customName}
+                              onChange={(e) => setCustomName(e.target.value)}
+                              placeholder="如：公司工牌"
+                              className={`w-full px-2 py-1.5 rounded text-xs ${theme.inputBg} ${theme.inputBorder} border ${theme.inputText} focus:outline-none focus:border-blue-500`}
+                            />
+                          </div>
+                          <div className="w-16">
+                            <label className={`text-[10px] ${theme.textDim}`}>宽(mm)</label>
+                            <input
+                              type="number"
+                              value={customWidthMm}
+                              onChange={(e) => setCustomWidthMm(e.target.value)}
+                              placeholder="25"
+                              min={1}
+                              className={`w-full px-2 py-1.5 rounded text-xs ${theme.inputBg} ${theme.inputBorder} border ${theme.inputText} focus:outline-none focus:border-blue-500`}
+                            />
+                          </div>
+                          <div className="w-16">
+                            <label className={`text-[10px] ${theme.textDim}`}>高(mm)</label>
+                            <input
+                              type="number"
+                              value={customHeightMm}
+                              onChange={(e) => setCustomHeightMm(e.target.value)}
+                              placeholder="35"
+                              min={1}
+                              className={`w-full px-2 py-1.5 rounded text-xs ${theme.inputBg} ${theme.inputBorder} border ${theme.inputText} focus:outline-none focus:border-blue-500`}
+                            />
+                          </div>
+                          <button
+                            onClick={handleAddCustomTemplate}
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded transition-colors"
+                          >
+                            添加
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+
                 const presets = ID_PHOTO_SIZE_PRESETS.filter((p) => p.category === cat)
                 if (presets.length === 0) return null
                 return (
@@ -165,6 +299,26 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
               })}
             </div>
           </div>
+
+          {/* Beauty Panel */}
+          <BeautyPanel theme={theme} />
+
+          {/* AI Matting Toggle */}
+          <div className={`rounded-xl p-4 ${theme.card} ${theme.border} border`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className={`text-sm font-semibold ${theme.textMuted}`}>AI 智能抠图</h3>
+                <p className={`text-[10px] mt-0.5 ${theme.textDim}`}>使用 AI 模型精准识别人物，适用于复杂背景</p>
+              </div>
+              <button
+                onClick={() => setUseAIMatting(!useAIMatting)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${useAIMatting ? 'bg-blue-600' : theme.inputBg}`}
+              >
+                <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${useAIMatting ? 'translate-x-5.5 left-0.5' : 'left-0.5'}`} />
+              </button>
+            </div>
+          </div>
+          </>
         )}
 
         {/* Background color */}
@@ -182,17 +336,92 @@ export default function IdPhotoImport({ theme }: IdPhotoImportProps) {
                   onClick={() => {
                     setSelectedBgColor(opt)
                     setRecoloredImageBase64(null)
+                    setSelectedGradient(null)
+                    setShowCustomColor(false)
+                    setShowGradient(false)
                   }}
                   theme={theme}
                 />
               ))}
+              {/* Custom color button */}
+              {mode === 'create' && (
+                <button
+                  onClick={() => {
+                    setShowCustomColor(!showCustomColor)
+                    setShowGradient(false)
+                  }}
+                  className={`flex flex-col items-center gap-1.5 p-2 rounded-lg transition-all
+                    ${showCustomColor ? 'ring-2 ring-blue-500' : theme.hoverBg}`}
+                >
+                  <div className={`w-8 h-8 rounded-full border-2 ${theme.border} flex items-center justify-center`}>
+                    <svg className={`w-4 h-4 ${theme.textDim}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </div>
+                  <span className={`text-[10px] ${showCustomColor ? 'text-blue-400' : theme.textDim}`}>自定义</span>
+                </button>
+              )}
+              {/* Gradient button */}
+              {mode === 'create' && useAIMatting && (
+                <button
+                  onClick={() => {
+                    setShowGradient(!showGradient)
+                    setShowCustomColor(false)
+                  }}
+                  className={`flex flex-col items-center gap-1.5 p-2 rounded-lg transition-all
+                    ${showGradient ? 'ring-2 ring-blue-500' : theme.hoverBg}`}
+                >
+                  <div className="w-8 h-8 rounded-full border-2 border-white/30 shadow-inner bg-gradient-to-b from-blue-400 to-purple-600" />
+                  <span className={`text-[10px] ${showGradient ? 'text-blue-400' : theme.textDim}`}>渐变</span>
+                </button>
+              )}
             </div>
+
+            {/* Custom color picker */}
+            {showCustomColor && (
+              <div className="mt-3">
+                <ColorPicker
+                  value={selectedBgColor.key === 'custom' ? selectedBgColor.colorValue : ''}
+                  onChange={(hex) => {
+                    setSelectedBgColor({ key: 'custom', label: '自定义', colorValue: hex })
+                    setSelectedGradient(null)
+                  }}
+                  theme={theme}
+                />
+              </div>
+            )}
+
+            {/* Gradient presets */}
+            {showGradient && (
+              <div className="mt-3 flex gap-2 flex-wrap">
+                {GRADIENT_PRESETS.map((g, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setSelectedGradient(g)
+                      setSelectedBgColor({ key: 'none', label: '保持原背景', colorValue: '' })
+                    }}
+                    className={`w-16 h-16 rounded-lg border-2 transition-all
+                      ${selectedGradient === g ? 'ring-2 ring-blue-500 border-blue-500' : `${theme.border} ${theme.hoverBg}`}`}
+                    style={{
+                      background: `linear-gradient(${g.angle}deg, ${g.colorStops.map((s) => `${s.color} ${s.offset * 100}%`).join(', ')})`
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
             {mode === 'recolor' && (
               <p className={`text-xs mt-2 ${theme.textDim}`}>
                 系统将自动识别原照片背景色并替换为所选颜色
               </p>
             )}
           </div>
+        )}
+
+        {/* Formal wear selector (create mode only) */}
+        {mode === 'create' && sourceImageBase64 && selectedPreset && useAIMatting && (
+          <FormalWearSelector theme={theme} />
         )}
 
         {/* Error */}
